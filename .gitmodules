@@ -1,0 +1,3 @@
+[submodule "testdata/donlon"]
+	path = testdata/donlon
+	url = https://github.com/aixm/donlon.git

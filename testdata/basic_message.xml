@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message:AIXMBasicMessage
+  xmlns:message="http://www.aixm.aero/schema/5.1.1/message"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:aixm="http://www.aixm.aero/schema/5.1.1"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  gml:id="BasicMessage_01">
+
+  <!-- Airspace: EGTT London FIR -->
+  <message:hasMember>
+    <aixm:Airspace gml:id="Airspace_EGTT">
+      <gml:identifier codeSpace="urn:uuid:">e34e0e14-0001-0000-0000-000000000000</gml:identifier>
+      <gml:name>London FIR</gml:name>
+      <aixm:timeSlice>
+        <aixm:AirspaceTimeSlice gml:id="Airspace_EGTT_ts1">
+          <gml:validTime>
+            <gml:TimePeriod gml:id="tp_EGTT">
+              <gml:beginPosition>2020-01-01T00:00:00Z</gml:beginPosition>
+              <gml:endPosition indeterminatePosition="unknown"/>
+            </gml:TimePeriod>
+          </gml:validTime>
+          <aixm:interpretation>BASELINE</aixm:interpretation>
+          <aixm:sequenceNumber>1</aixm:sequenceNumber>
+          <aixm:correctionNumber>0</aixm:correctionNumber>
+          <aixm:type>FIR</aixm:type>
+          <aixm:designator>EGTT</aixm:designator>
+          <aixm:name>LONDON FIR</aixm:name>
+        </aixm:AirspaceTimeSlice>
+      </aixm:timeSlice>
+    </aixm:Airspace>
+  </message:hasMember>
+
+  <!-- AirportHeliport: EGLL Heathrow -->
+  <message:hasMember>
+    <aixm:AirportHeliport gml:id="AD_EGLL">
+      <gml:identifier codeSpace="urn:uuid:">e34e0e14-0002-0000-0000-000000000000</gml:identifier>
+      <gml:name>London Heathrow</gml:name>
+      <aixm:timeSlice>
+        <aixm:AirportHeliportTimeSlice gml:id="AD_EGLL_ts1">
+          <gml:validTime>
+            <gml:TimePeriod gml:id="tp_EGLL">
+              <gml:beginPosition>2020-01-01T00:00:00Z</gml:beginPosition>
+              <gml:endPosition indeterminatePosition="unknown"/>
+            </gml:TimePeriod>
+          </gml:validTime>
+          <aixm:interpretation>BASELINE</aixm:interpretation>
+          <aixm:sequenceNumber>1</aixm:sequenceNumber>
+          <aixm:correctionNumber>0</aixm:correctionNumber>
+          <aixm:designator>EGLL</aixm:designator>
+          <aixm:name>LONDON HEATHROW</aixm:name>
+          <aixm:locationIndicatorICAO>EGLL</aixm:locationIndicatorICAO>
+          <aixm:type>AD</aixm:type>
+        </aixm:AirportHeliportTimeSlice>
+      </aixm:timeSlice>
+    </aixm:AirportHeliport>
+  </message:hasMember>
+
+  <!-- Navaid: BIG NDB -->
+  <message:hasMember>
+    <aixm:Navaid gml:id="NAV_BIG">
+      <gml:identifier codeSpace="urn:uuid:">e34e0e14-0003-0000-0000-000000000000</gml:identifier>
+      <gml:name>BIG</gml:name>
+      <aixm:timeSlice>
+        <aixm:NavaidTimeSlice gml:id="NAV_BIG_ts1">
+          <gml:validTime>
+            <gml:TimePeriod gml:id="tp_BIG">
+              <gml:beginPosition>2020-01-01T00:00:00Z</gml:beginPosition>
+              <gml:endPosition indeterminatePosition="unknown"/>
+            </gml:TimePeriod>
+          </gml:validTime>
+          <aixm:interpretation>BASELINE</aixm:interpretation>
+          <aixm:sequenceNumber>1</aixm:sequenceNumber>
+          <aixm:correctionNumber>0</aixm:correctionNumber>
+          <aixm:designator>BIG</aixm:designator>
+          <aixm:name>BIGGIN HILL</aixm:name>
+          <aixm:type>NDB</aixm:type>
+        </aixm:NavaidTimeSlice>
+      </aixm:timeSlice>
+    </aixm:Navaid>
+  </message:hasMember>
+
+</message:AIXMBasicMessage>

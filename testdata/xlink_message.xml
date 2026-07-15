@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message:AIXMBasicMessage
+  xmlns:message="http://www.aixm.aero/schema/5.1.1/message"
+  xmlns:aixm="http://www.aixm.aero/schema/5.1.1"
+  xmlns:gml="http://www.opengis.net/gml/3.2"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  gml:id="M-xlink-test">
+
+  <!-- DesignatedPoint referenced by the RouteSegment below -->
+  <message:hasMember>
+    <aixm:DesignatedPoint gml:id="DP-ALPHA">
+      <gml:identifier codeSpace="urn:uuid:">dp-alpha-0000-0000-0000-000000000001</gml:identifier>
+      <aixm:timeSlice>
+        <aixm:DesignatedPointTimeSlice gml:id="DP-ALPHA-TS">
+          <gml:validTime>
+            <gml:TimePeriod gml:id="DP-ALPHA-TP">
+              <gml:beginPosition>2020-01-01</gml:beginPosition>
+              <gml:endPosition indeterminatePosition="unknown"/>
+            </gml:TimePeriod>
+          </gml:validTime>
+          <aixm:interpretation>BASELINE</aixm:interpretation>
+          <aixm:sequenceNumber>1</aixm:sequenceNumber>
+          <aixm:correctionNumber>0</aixm:correctionNumber>
+          <aixm:designator>ALPHA</aixm:designator>
+          <aixm:type>ICAO</aixm:type>
+        </aixm:DesignatedPointTimeSlice>
+      </aixm:timeSlice>
+    </aixm:DesignatedPoint>
+  </message:hasMember>
+
+  <!-- RouteSegment that references the DesignatedPoint by xlink:href -->
+  <message:hasMember>
+    <aixm:RouteSegment gml:id="RS-001">
+      <gml:identifier codeSpace="urn:uuid:">rs-001-0000-0000-0000-000000000002</gml:identifier>
+      <aixm:timeSlice>
+        <aixm:RouteSegmentTimeSlice gml:id="RS-001-TS">
+          <gml:validTime>
+            <gml:TimePeriod gml:id="RS-001-TP">
+              <gml:beginPosition>2020-01-01</gml:beginPosition>
+              <gml:endPosition indeterminatePosition="unknown"/>
+            </gml:TimePeriod>
+          </gml:validTime>
+          <aixm:interpretation>BASELINE</aixm:interpretation>
+          <aixm:sequenceNumber>1</aixm:sequenceNumber>
+          <aixm:correctionNumber>0</aixm:correctionNumber>
+          <aixm:start xlink:href="urn:uuid:dp-alpha-0000-0000-0000-000000000001"/>
+          <aixm:end xlink:href="urn:uuid:dp-alpha-0000-0000-0000-000000000001"/>
+        </aixm:RouteSegmentTimeSlice>
+      </aixm:timeSlice>
+    </aixm:RouteSegment>
+  </message:hasMember>
+
+</message:AIXMBasicMessage>
