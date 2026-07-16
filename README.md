@@ -128,6 +128,34 @@ msg, _ := goaixm.ParseFile("adr_message.xml")
 // ADR feature types are now registered and decoded automatically.
 ```
 
+## Custom type support
+
+Feature decoding is driven by a registry mapping XML local names to factory
+functions. To support feature types goaixm doesn't ship (e.g. a national
+AIXM extension), define the struct and register it before parsing —
+typically from an `init()` in your own package, mirroring `extensions/adr`:
+
+```go
+type ObstacleAreaType struct {
+    XMLName   xml.Name `xml:"urn:example:ext ObstacleArea"`
+    ID        string   `xml:"http://www.opengis.net/gml/3.2 id,attr"`
+    TimeSlice []ObstacleAreaTimeSliceType `xml:"urn:example:ext timeSlice>ObstacleAreaTimeSlice"`
+}
+
+func init() {
+    parse.DefaultRegistry.Register("ObstacleArea", func() any {
+        return new(ObstacleAreaType)
+    })
+}
+```
+
+Registered types are decoded automatically wherever they appear as message
+members and are returned by `msg.ByType("ObstacleArea")` and
+`msg.Features()`. Extension elements inside existing feature timeslices
+(the AIXM `extension` slots) need no registration — declare a struct whose
+`XMLName` matches the extension element, as in
+[`extensions/adr/adr.go`](extensions/adr/adr.go).
+
 ## Package structure
 
 | Package | Purpose |
