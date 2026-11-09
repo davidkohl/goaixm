@@ -137,18 +137,20 @@ func TestAirspaceToGeoJSONDonlon(t *testing.T) {
 		t.Fatalf("ParseMessage: %v", err)
 	}
 
-	ok, skipped := 0, 0
+	// All but two DONLON airspaces convert from the feature alone.  The
+	// remaining two borrow a boundary from a GeoBorder held elsewhere in the
+	// message, which only AirspaceToGeoJSONWithRefs can resolve.  An exact
+	// count keeps a regression from hiding.
+	const wantOK = 18
+
+	ok := 0
 	for _, a := range msg.Airspaces() {
-		_, err := geo.AirspaceToGeoJSON(a)
-		if err != nil {
-			skipped++
-		} else {
+		if _, err := geo.AirspaceToGeoJSON(a); err == nil {
 			ok++
 		}
 	}
-	t.Logf("DONLON airspaces: %d with geometry, %d without/error", ok, skipped)
-	if ok == 0 {
-		t.Error("expected at least one airspace to produce GeoJSON")
+	if ok != wantOK {
+		t.Errorf("DONLON airspaces converting without a message = %d, want %d", ok, wantOK)
 	}
 }
 
@@ -196,18 +198,29 @@ func TestDiscretizeArc(t *testing.T) {
 	poly := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
 	coords := poly.Coordinates[0]
 
-	// DefaultArcPoints=64 → 65 points.
-	if len(coords) != geo.DefaultArcPoints+1 {
-		t.Errorf("arc: expected %d points, got %d", geo.DefaultArcPoints+1, len(coords))
+	// A 180-degree sweep uses half of DefaultArcPoints, and the ring is then
+	// closed back on its first position as RFC 7946 requires.
+	wantArc := geo.DefaultArcPoints/2 + 1
+	if len(coords) != wantArc+1 {
+		t.Errorf("arc: expected %d points (%d arc + closing), got %d",
+			wantArc+1, wantArc, len(coords))
 	}
 
-	// First point should be lon=1, lat=0.
-	if !approxEqual(coords[0][0], 1.0, 1e-9) || !approxEqual(coords[0][1], 0.0, 1e-9) {
-		t.Errorf("arc first point = %v, want [1,0]", coords[0])
+	// The ring must be closed.
+	if coords[0] != coords[len(coords)-1] {
+		t.Errorf("arc ring not closed: first %v, last %v", coords[0], coords[len(coords)-1])
 	}
-	// Last point should be lon=-1, lat=0.
-	if !approxEqual(coords[len(coords)-1][0], -1.0, 1e-9) || !approxEqual(coords[len(coords)-1][1], 0.0, 1e-9) {
-		t.Errorf("arc last point = %v, want [-1,0]", coords[len(coords)-1])
+
+	// The two arc endpoints are (1,0) and (-1,0); orientation decides which
+	// comes first, so accept either order.
+	first, last := coords[0], coords[len(coords)-2]
+	okForward := approxEqual(first[0], 1.0, 1e-6) && approxEqual(last[0], -1.0, 1e-6)
+	okReverse := approxEqual(first[0], -1.0, 1e-6) && approxEqual(last[0], 1.0, 1e-6)
+	if !okForward && !okReverse {
+		t.Errorf("arc endpoints = %v .. %v, want (1,0) and (-1,0) in some order", first, last)
+	}
+	if !approxEqual(first[1], 0.0, 1e-6) || !approxEqual(last[1], 0.0, 1e-6) {
+		t.Errorf("arc endpoints not on the equator: %v .. %v", first, last)
 	}
 }
 

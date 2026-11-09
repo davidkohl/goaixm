@@ -104,6 +104,13 @@ func (f *OrganisationAuthorityType) GetGMLID() string      { return f.GMLID }
 func (f *OrganisationAuthorityType) GetIdentifier() string { return identifierValue(f.Identifier) }
 func (f *OrganisationAuthorityType) GetNames() []string    { return codeTypeValues(f.Name) }
 
+// GeoBorder implements Feature so that borders shared between airspaces —
+// national boundaries and the like — can be resolved from a curveMember
+// reference during geometry assembly.
+func (f *GeoBorderType) GetGMLID() string      { return f.GMLID }
+func (f *GeoBorderType) GetIdentifier() string { return identifierValue(f.Identifier) }
+func (f *GeoBorderType) GetNames() []string    { return codeTypeValues(f.Name) }
+
 // ---- TimeSlice interface implementations ----------------------------------
 
 func (ts *NavaidTimeSliceType) GetValidTime() gml.TimePrimitivePropertyType { return ts.ValidTime }

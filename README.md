@@ -9,7 +9,7 @@ A Go library for parsing and working with [AIXM 5.1.1](https://aixm.aero) (Aeron
 - **Streaming parser** — O(largest member) memory, suitable for multi-gigabyte NM B2B files
 - **TimeSlice filtering** — filter by interpretation, valid time, or compute the effective state at any point in time (BASELINE + PERMDELTA + TEMPDELTA merging)
 - **XLink resolution** — automatically resolves `xlink:href` cross-references after decode
-- **GeoJSON export** — converts airspace geometry to GeoJSON including interior rings (holes), arc/circle discretization, and referenced sub-airspace assembly
+- **GeoJSON export** — converts airspace geometry to RFC 7946 GeoJSON: interior rings (holes), geodesic arc and circle discretization on the WGS-84 ellipsoid, referenced GeoBorder resolution, and sub-airspace assembly
 - **Feature validation** — explicit data quality checks per feature type
 - **EUROCONTROL ADR 23.5.0 extension** — opt-in via blank import
 - **Fuzz-tested** — `go test -fuzz` harness with 600k+ iterations, no panics
@@ -88,11 +88,53 @@ data, _ := geo.MarshalGeoJSON(fc)
 os.WriteFile("airspace.geojson", data, 0644)
 ```
 
-For airspaces that reference sub-airspace geometry via `xlink:href` (e.g. EDDH-style):
+Prefer `AirspaceToGeoJSONWithRefs` when you have the message. Geometry that
+lives elsewhere in the document — a national boundary shared through a
+`GeoBorder`, a sub-airspace contributed via `contributorAirspace`, or an arc
+centre held in a separate `Point` — can only be resolved with it:
 
 ```go
 fc, err := geo.AirspaceToGeoJSONWithRefs(airspace, msg)
 ```
+
+Whole message to a single collection:
+
+```go
+msg, _ := goaixm.ParseFile("airspaces.xml")
+
+all := &geo.GeoJSONFeatureCollection{Type: "FeatureCollection"}
+for _, a := range msg.Airspaces() {
+    fc, err := geo.AirspaceToGeoJSONWithRefs(a, msg)
+    if err != nil {
+        continue // no geometry on this airspace
+    }
+    all.Features = append(all.Features, fc.Features...)
+}
+data, _ := geo.MarshalGeoJSON(all)
+os.WriteFile("airspaces.geojson", data, 0644)
+```
+
+### Geometry support
+
+| GML construct | Handling |
+|---|---|
+| `LinearRing`, `GeodesicString`, `LineStringSegment` | Vertices taken as given |
+| `CircleByCenterPoint`, `ArcByCenterPoint` | Discretized geodesically on WGS-84 (Vincenty direct); point count scales with the swept angle |
+| `Arc`, `Circle` (three-point forms) | Centre found planar, then walked geodesically |
+| `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` |
+| `aixm:Curve` / `aixm:Point` in a GML slot | Accepted wherever they substitute for the GML element |
+| Mixed segments in one curve | Assembled in document order |
+
+Radii are converted from their unit of measure — `NM`, `KM`, `M`, `FT`, `MI`,
+`CM` and the UCUM spellings including `[nmi_i]`. An unrecognised unit is an
+error rather than an assumed default, since a wrong unit yields a
+plausible-looking but badly wrong polygon.
+
+Output rings are closed and wound per RFC 7946: exteriors counter-clockwise,
+holes clockwise.
+
+`geo.DefaultArcPoints` (default 64) sets the number of points used for a full
+circle; arcs use proportionally fewer.
 
 ## Feature validation
 
@@ -209,7 +251,9 @@ The test suite validates against the official [DONLON](https://ext.eurocontrol.i
 ## Limitations
 
 - **No XML Schema validation** against the AIXM XSDs at parse time — malformed input is skipped with a `ParseWarning`, not rejected with a schema error.
-- **Arc discretization** uses planar (Cartesian) geometry, not geodesic. For small airspace boundaries this is acceptable; for large arcs spanning many degrees of latitude a geodesic library should be used instead.
+- **Corridor airspaces** (a `centreline` with a `width`) are emitted as a GeoJSON `LineString` carrying a `width_m` property. They are **not** buffered into a polygon — a correct geodesic buffer needs offset curves, join and cap handling and self-intersection cleanup, which is outside this library's scope. Buffer the centreline downstream if you need an area.
+- **Airspace aggregation** supports the `BASE` and `UNION` operations. `INTERS` and `SUBTR` require polygon boolean operations and are rejected with an error rather than silently approximated.
+- **No CRS reprojection.** All coordinates are assumed to be EPSG:4326 in latitude-longitude order, which is what AIXM data uses in practice; `srsName` is parsed but not interpreted.
 - **No DO-178C / DO-200B certification** — this library has not been through a formal avionics software or data quality assurance process. It must not be used as a safety-critical component in operational ATM systems without independent certification.
 
 ## License
