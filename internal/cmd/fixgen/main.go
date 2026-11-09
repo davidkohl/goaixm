@@ -79,6 +79,9 @@ package {{.Package}}
 type NilableString struct {
 	Value     string ` + "`" + `xml:",chardata"` + "`" + `
 	NilReason string ` + "`" + `xml:"nilReason,attr,omitempty"` + "`" + `
+	// UOM is the unit of measure of value types (uom attribute), e.g. FT, FL,
+	// M, NM or MHZ.  Empty for code and text types.
+	UOM string ` + "`" + `xml:"uom,attr,omitempty"` + "`" + `
 }
 
 {{range .Types}}// {{.Name}} is an AIXM data type.
