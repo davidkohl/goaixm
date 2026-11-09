@@ -17,6 +17,8 @@ type Message struct {
 	byID     map[string]any   // identifier -> feature
 	byType   map[string][]any // local name -> features
 	warnings []ParseWarning   // non-fatal decode problems
+	members  []Member         // decoded members in document order
+	memberOf map[any]int      // feature -> index into members
 }
 
 // ParseWarning records a non-fatal problem encountered during message parsing.
@@ -35,11 +37,16 @@ func ParseMessage(r io.Reader) (*Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse: read: %w", err)
 	}
+	return parseMessageData(data, defaultConfig())
+}
+
+// parseMessageData decodes a complete AIXMBasicMessage document.
+func parseMessageData(data []byte, cfg decodeConfig) (*Message, error) {
 	var raw message.AIXMBasicMessage
 	if err := xml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse: unmarshal message: %w", err)
 	}
-	return resolveMessage(&raw)
+	return resolveMessage(&raw, cfg)
 }
 
 // ADRMessage wraps a decoded ADRMessage.
@@ -64,37 +71,51 @@ func ParseADRMessage(r io.Reader) (*ADRMessage, error) {
 	if err := xml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse: unmarshal ADR message: %w", err)
 	}
-	decoded, byID, byType, warnings, err := resolveMembers(raw.HasMember)
+	res, err := resolveMembers(raw.HasMember, defaultConfig())
 	if err != nil {
 		return nil, err
 	}
+	decoded, byID, byType, warnings := res.decoded, res.byID, res.byType, res.warnings
 	resolveXLinks(decoded, byID)
 	return &ADRMessage{Raw: &raw, decoded: decoded, byID: byID, byType: byType, warnings: warnings}, nil
 }
 
 // resolveMessage decodes the raw members of an AIXMBasicMessage.
-func resolveMessage(raw *message.AIXMBasicMessage) (*Message, error) {
-	members := make([]message.BasicMessageMember, len(raw.HasMember))
-	copy(members, raw.HasMember)
+func resolveMessage(raw *message.AIXMBasicMessage, cfg decodeConfig) (*Message, error) {
 	// Convert to ADRMessageMember slice for reuse
-	adrMembers := make([]message.ADRMessageMember, len(members))
-	for i, m := range members {
+	adrMembers := make([]message.ADRMessageMember, len(raw.HasMember))
+	for i, m := range raw.HasMember {
 		adrMembers[i] = message.ADRMessageMember{Inner: m.Inner, HrefAttr: m.HrefAttr, Owns: m.Owns}
 	}
-	decoded, byID, byType, warnings, err := resolveMembers(adrMembers)
+	res, err := resolveMembers(adrMembers, cfg)
 	if err != nil {
 		return nil, err
 	}
-	resolveXLinks(decoded, byID)
-	return &Message{Raw: raw, decoded: decoded, byID: byID, byType: byType, warnings: warnings}, nil
+	resolveXLinks(res.decoded, res.byID)
+	return &Message{
+		Raw: raw, decoded: res.decoded, byID: res.byID, byType: res.byType,
+		warnings: res.warnings, members: res.members, memberOf: res.memberOf,
+	}, nil
+}
+
+type resolved struct {
+	decoded  []any
+	byID     map[string]any
+	byType   map[string][]any
+	warnings []ParseWarning
+	members  []Member
+	memberOf map[any]int
 }
 
 // resolveMembers performs second-pass decode of raw member inner XML.
-func resolveMembers(members []message.ADRMessageMember) ([]any, map[string]any, map[string][]any, []ParseWarning, error) {
-	decoded := make([]any, 0, len(members))
-	byID := make(map[string]any)
-	byType := make(map[string][]any)
-	var warnings []ParseWarning
+func resolveMembers(members []message.ADRMessageMember, cfg decodeConfig) (*resolved, error) {
+	res := &resolved{
+		decoded:  make([]any, 0, len(members)),
+		byID:     make(map[string]any),
+		byType:   make(map[string][]any),
+		members:  make([]Member, 0, len(members)),
+		memberOf: make(map[any]int, len(members)),
+	}
 
 	for idx, m := range members {
 		if len(bytes.TrimSpace(m.Inner)) == 0 {
@@ -102,27 +123,53 @@ func resolveMembers(members []message.ADRMessageMember) ([]any, map[string]any, 
 		}
 		localName, err := peekLocalName(m.Inner)
 		if err != nil {
-			warnings = append(warnings, ParseWarning{MemberIndex: idx, Err: fmt.Errorf("peek local name: %w", err)})
+			res.warnings = append(res.warnings, ParseWarning{MemberIndex: idx, Err: fmt.Errorf("peek local name: %w", err)})
 			continue
 		}
-		v, err := DefaultRegistry.Decode(localName, wrapElement(m.Inner))
+		mem, err := decodeMember(cfg, idx, localName, wrapElement(m.Inner))
 		if err != nil {
-			warnings = append(warnings, ParseWarning{MemberIndex: idx, LocalName: localName, Err: err})
-			continue
+			res.warnings = append(res.warnings, ParseWarning{MemberIndex: idx, LocalName: localName, Err: err})
+			if mem.Feature == nil {
+				continue
+			}
 		}
-		decoded = append(decoded, v)
-		byType[localName] = append(byType[localName], v)
+		v := mem.Feature
+		res.decoded = append(res.decoded, v)
+		res.byType[localName] = append(res.byType[localName], v)
 		if id := featureID(v); id != "" {
-			byID[id] = v
+			res.byID[id] = v
 		}
+		res.memberOf[v] = len(res.members)
+		res.members = append(res.members, mem)
 	}
-	return decoded, byID, byType, warnings, nil
+	return res, nil
 }
 
 // ---- Message query methods ------------------------------------------------
 
 // Features returns all decoded features in document order.
 func (m *Message) Features() []any { return m.decoded }
+
+// Members returns every decoded member in document order, including overlay
+// extensions and (with ParseOptions.KeepRaw) the raw XML.
+func (m *Message) Members() []Member { return m.members }
+
+// Member returns the member record for a feature value returned by this
+// message.
+func (m *Message) Member(feature any) (Member, bool) {
+	i, ok := m.memberOf[feature]
+	if !ok {
+		return Member{}, false
+	}
+	return m.members[i], true
+}
+
+// Extensions returns the overlay values decoded for feature (see
+// Registry.Extend).
+func (m *Message) Extensions(feature any) []any {
+	mem, _ := m.Member(feature)
+	return mem.Extensions
+}
 
 // Feature looks up a feature by its GML identifier (UUID).
 func (m *Message) Feature(identifier string) (any, bool) {

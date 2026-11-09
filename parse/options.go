@@ -1,7 +1,6 @@
 package parse
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -19,15 +18,26 @@ type ParseOptions struct {
 	// StrictMode causes unknown feature types and other non-fatal problems to
 	// be returned as errors instead of warnings.
 	StrictMode bool
+
+	// Fallback selects what happens to members with no registered type.
+	// The default, FallbackSkip, drops them with a warning.
+	Fallback Fallback
+
+	// KeepRaw retains each member's XML (Member.Raw) so it can be
+	// re-examined with Member.Node.
+	KeepRaw bool
+}
+
+func (o ParseOptions) config() decodeConfig {
+	reg := o.Registry
+	if reg == nil {
+		reg = DefaultRegistry
+	}
+	return decodeConfig{reg: reg, fallback: o.Fallback, keepRaw: o.KeepRaw}
 }
 
 // ParseMessageWithOptions decodes an AIXMBasicMessage using the given options.
 func ParseMessageWithOptions(ctx context.Context, r io.Reader, opts ParseOptions) (*Message, error) {
-	reg := opts.Registry
-	if reg == nil {
-		reg = DefaultRegistry
-	}
-
 	var src io.Reader = r
 	if opts.MaxBytes > 0 {
 		src = io.LimitReader(r, opts.MaxBytes+1)
@@ -44,14 +54,7 @@ func ParseMessageWithOptions(ctx context.Context, r io.Reader, opts ParseOptions
 		return nil, err
 	}
 
-	// Swap DefaultRegistry temporarily when a custom one is provided.
-	if reg != DefaultRegistry {
-		orig := DefaultRegistry
-		DefaultRegistry = reg
-		defer func() { DefaultRegistry = orig }()
-	}
-
-	msg, err := ParseMessage(bytes.NewReader(data))
+	msg, err := parseMessageData(data, opts.config())
 	if err != nil {
 		return nil, err
 	}

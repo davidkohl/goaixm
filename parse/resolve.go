@@ -2,8 +2,11 @@ package parse
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 )
+
+var uuidRe = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
 // resolveXLinks walks every decoded feature and fills nil inline pointers on
 // property types that carry a non-empty xlink:href attribute.  It uses the
@@ -129,6 +132,13 @@ func tryResolve(v reflect.Value, byID map[string]any) {
 //	urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 //	#xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 func hrefToID(href string) string {
+	// XPointer form: #xpointer(//*[@gml:identifier='<uuid>']) or similar.
+	if strings.Contains(href, "xpointer(") {
+		if m := uuidRe.FindString(href); m != "" {
+			return m
+		}
+		return ""
+	}
 	if strings.HasPrefix(href, "urn:uuid:") {
 		return strings.TrimPrefix(href, "urn:uuid:")
 	}

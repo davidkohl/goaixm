@@ -23,8 +23,46 @@ type StreamHandler func(localName string, feature any) error
 // The context ctx is checked before each member is decoded; cancellation
 // aborts streaming and returns ctx.Err().
 func StreamMessage(ctx context.Context, r io.Reader, handler StreamHandler) error {
+	return StreamMessageWithOptions(ctx, r, StreamOptions{}, func(m Member) error {
+		return handler(m.LocalName, m.Feature)
+	})
+}
+
+// StreamOptions configures StreamMessageWithOptions.
+type StreamOptions struct {
+	// Registry is the feature type registry to use.  Nil uses DefaultRegistry.
+	Registry *Registry
+	// Fallback selects what happens to members with no registered type.
+	Fallback Fallback
+	// KeepRaw retains each member's XML in Member.Raw.
+	KeepRaw bool
+	// OnWarning, when set, is called for every member that could not be
+	// decoded.  Returning an error aborts streaming.  When nil such members
+	// are skipped silently.
+	OnWarning func(ParseWarning) error
+}
+
+// MemberHandler is called for each decoded member in document order.
+type MemberHandler func(Member) error
+
+// StreamMessageWithOptions is StreamMessage with an explicit registry,
+// fallback, raw retention and warning reporting.  Each member is delivered
+// with its overlay extensions (see Registry.Extend).
+func StreamMessageWithOptions(ctx context.Context, r io.Reader, opts StreamOptions, handler MemberHandler) error {
+	cfg := decodeConfig{reg: opts.Registry, fallback: opts.Fallback, keepRaw: opts.KeepRaw}
+	if cfg.reg == nil {
+		cfg.reg = DefaultRegistry
+	}
+	warn := func(w ParseWarning) error {
+		if opts.OnWarning != nil {
+			return opts.OnWarning(w)
+		}
+		return nil
+	}
+
 	d := xml.NewDecoder(r)
 	inMember := false
+	idx := -1
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -47,6 +85,7 @@ func StreamMessage(ctx context.Context, r io.Reader, handler StreamHandler) erro
 		// Detect hasMember elements (namespace-qualified or bare).
 		if se.Name.Local == "hasMember" {
 			inMember = true
+			idx++
 			continue
 		}
 
@@ -61,19 +100,23 @@ func StreamMessage(ctx context.Context, r io.Reader, handler StreamHandler) erro
 		// Capture the raw XML of this element (including its own start tag).
 		raw, err := captureElement(d, se)
 		if err != nil {
-			// Non-fatal: record and skip.
+			if werr := warn(ParseWarning{MemberIndex: idx, LocalName: localName, Err: err}); werr != nil {
+				return werr
+			}
 			continue
 		}
 
-		wrapped := wrapElement(raw)
-		v, err := DefaultRegistry.Decode(localName, wrapped)
+		mem, err := decodeMember(cfg, idx, localName, wrapElement(raw))
 		if err != nil {
-			// Unknown type — skip silently (caller can use a registry with
-			// only the types they care about to filter).
-			continue
+			if werr := warn(ParseWarning{MemberIndex: idx, LocalName: localName, Err: err}); werr != nil {
+				return werr
+			}
+			if mem.Feature == nil {
+				continue
+			}
 		}
 
-		if err := handler(localName, v); err != nil {
+		if err := handler(mem); err != nil {
 			return err
 		}
 	}

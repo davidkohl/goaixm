@@ -14,12 +14,49 @@ import (
 type FeatureFactory func() any
 
 // Registry maps XML local names to feature factory functions.
+//
+// A Registry is the extension point of the parser:
+//
+//   - Register adds or replaces the primary type decoded for a feature
+//     (override).  Use it to swap a generated type for a richer one of your
+//     own.
+//   - Extend adds an overlay schema: an extra struct decoded from the same
+//     member XML alongside the primary type.  Overlays only need to declare
+//     the elements they care about; encoding/xml ignores the rest.  Retrieve
+//     them with Message.Extensions or the generic Extension helper.
+//
+// Use NewRegistry for an empty registry or DefaultRegistry.Clone() to start
+// from the built-in AIXM 5.1.1 types.  Registries are safe for concurrent
+// use.
 type Registry struct {
-	mu        sync.RWMutex
-	factories map[string]FeatureFactory
+	mu         sync.RWMutex
+	factories  map[string]FeatureFactory
+	extensions map[string][]FeatureFactory
 }
 
-// Register adds a factory for the given XML local name.
+// NewRegistry returns an empty registry.
+func NewRegistry() *Registry {
+	return &Registry{
+		factories:  make(map[string]FeatureFactory),
+		extensions: make(map[string][]FeatureFactory),
+	}
+}
+
+// Clone returns an independent copy of r, including its overlays.
+func (r *Registry) Clone() *Registry {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	c := NewRegistry()
+	for k, v := range r.factories {
+		c.factories[k] = v
+	}
+	for k, v := range r.extensions {
+		c.extensions[k] = append([]FeatureFactory(nil), v...)
+	}
+	return c
+}
+
+// Register adds or replaces the primary factory for the given XML local name.
 func (r *Registry) Register(localName string, f FeatureFactory) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -27,6 +64,38 @@ func (r *Registry) Register(localName string, f FeatureFactory) {
 		r.factories = make(map[string]FeatureFactory)
 	}
 	r.factories[localName] = f
+}
+
+// Extend adds an overlay schema for the given XML local name.  Every member
+// with that name is additionally decoded into a fresh value from f.  Several
+// overlays may be registered for one name; they are returned in registration
+// order.  An overlay may be registered for a name that has no primary type.
+func (r *Registry) Extend(localName string, f FeatureFactory) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.extensions == nil {
+		r.extensions = make(map[string][]FeatureFactory)
+	}
+	r.extensions[localName] = append(r.extensions[localName], f)
+}
+
+// Has reports whether a primary type is registered for localName.
+func (r *Registry) Has(localName string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, ok := r.factories[localName]
+	return ok
+}
+
+// Names returns the local names that have a primary type registered.
+func (r *Registry) Names() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]string, 0, len(r.factories))
+	for k := range r.factories {
+		out = append(out, k)
+	}
+	return out
 }
 
 // Decode finds the factory for localName and decodes data into a new instance.
@@ -39,7 +108,31 @@ func (r *Registry) Decode(localName string, data []byte) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("parse: unknown feature type %q", localName)
 	}
-	v := f()
+	return decodeWrapped(localName, data, f())
+}
+
+// DecodeExtensions decodes every overlay registered for localName from data
+// (wrapped as for Decode).  It returns nil when there are none.
+func (r *Registry) DecodeExtensions(localName string, data []byte) ([]any, error) {
+	r.mu.RLock()
+	fs := r.extensions[localName]
+	r.mu.RUnlock()
+	if len(fs) == 0 {
+		return nil, nil
+	}
+	out := make([]any, 0, len(fs))
+	for _, f := range fs {
+		v, err := decodeWrapped(localName, data, f())
+		if err != nil {
+			return nil, fmt.Errorf("extension: %w", err)
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+// decodeWrapped decodes the first child of the _root_ wrapper into v.
+func decodeWrapped(localName string, data []byte, v any) (any, error) {
 	d := xml.NewDecoder(bytes.NewReader(data))
 	// Advance past the _root_ wrapper to the first child element.
 	for {
@@ -61,7 +154,7 @@ func (r *Registry) Decode(localName string, data []byte) (any, error) {
 }
 
 // DefaultRegistry is the package-level feature registry populated by init().
-var DefaultRegistry = &Registry{}
+var DefaultRegistry = NewRegistry()
 
 func init() {
 	r := DefaultRegistry
