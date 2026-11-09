@@ -3,19 +3,18 @@ package geo
 import (
 	"fmt"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/parse"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/gml"
 )
 
-// This file exposes the geometry building blocks used by the GeoJSON
-// conversion, so callers working with their own (extension) types can turn
-// any AIXM geometry into coordinates.  All coordinates are [lon, lat].
-// msg may be nil; it is only needed to resolve geometry given by reference
-// (GeoBorders, arc centres held in other features).
+// The building blocks below work on any AIXM geometry, so callers using
+// their own (extension) types can convert it too.  Coordinates are [lon,
+// lat].  msg may be nil; it is only needed to resolve geometry given by
+// reference (GeoBorders, arc centres held in other features).
 
-// FromPointType extracts the coordinate from an aixm:Point.
-func FromPointType(p *features.PointType) (Coordinate, error) {
+// FromPoint extracts the coordinate of an aixm:Point.
+func FromPoint(p *aixm.Point) (Coordinate, error) {
 	if p == nil {
 		return Coordinate{}, fmt.Errorf("geo: nil Point")
 	}
@@ -29,44 +28,50 @@ func FromPointType(p *features.PointType) (Coordinate, error) {
 	return Coordinate{Lat: coords[0], Lon: coords[1]}, nil
 }
 
+// FromPointProperty extracts the coordinate of whichever point form a
+// PointProperty holds.
+func FromPointProperty(p *aixm.PointProperty) (Coordinate, error) {
+	switch {
+	case p == nil:
+		return Coordinate{}, fmt.Errorf("geo: nil PointProperty")
+	case p.ElevatedPoint != nil:
+		return FromElevatedPoint(p.ElevatedPoint)
+	default:
+		return FromPoint(p.Point)
+	}
+}
+
 // SegmentCoords flattens GML curve segments (LineStringSegment,
 // GeodesicString, Arc, Circle, ArcByCenterPoint, CircleByCenterPoint) into a
 // polyline.  Arcs are discretised with DefaultArcPoints resolution.
-func SegmentCoords(segs *gml.CurveSegmentsType, msg *parse.Message) ([][2]float64, error) {
+func SegmentCoords(segs *gml.CurveSegments, msg *goaixm.Message) ([][2]float64, error) {
 	return segmentsToCoords(segs, centreResolverFor(msg), msg)
 }
 
-// CurveCoords flattens an aixm:Curve into a polyline.
-func CurveCoords(c *features.CurveType, msg *parse.Message) ([][2]float64, error) {
-	if c == nil {
-		return nil, fmt.Errorf("geo: nil Curve")
+// CurveCoords flattens whichever curve form a CurveProperty holds.
+func CurveCoords(c *aixm.CurveProperty, msg *goaixm.Message) ([][2]float64, error) {
+	segs := c.Segments()
+	if segs == nil {
+		return nil, fmt.Errorf("geo: curve property has no inline curve")
 	}
-	return SegmentCoords(c.Segments, msg)
-}
-
-// ElevatedCurveCoords flattens an aixm:ElevatedCurve into a polyline.
-func ElevatedCurveCoords(c *features.ElevatedCurveType, msg *parse.Message) ([][2]float64, error) {
-	if c == nil {
-		return nil, fmt.Errorf("geo: nil ElevatedCurve")
-	}
-	return SegmentCoords(c.Segments, msg)
+	return SegmentCoords(segs, msg)
 }
 
 // SurfaceRings returns the closed, RFC 7946 oriented rings (exterior first,
 // then holes) of the first polygon patch of a surface.
-func SurfaceRings(patches *gml.SurfacePatchesType, msg *parse.Message) ([][][2]float64, error) {
+func SurfaceRings(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][2]float64, error) {
 	return extractAllRings(patches, centreResolverFor(msg), msg)
 }
 
 // SurfacePolygons returns one polygon (list of rings) per polygon patch.
-func SurfacePolygons(patches *gml.SurfacePatchesType, msg *parse.Message) ([][][][2]float64, error) {
+func SurfacePolygons(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][][2]float64, error) {
 	if patches == nil || len(patches.PolygonPatch) == 0 {
 		return nil, fmt.Errorf("geo: surface has no patches")
 	}
 	res := centreResolverFor(msg)
 	var out [][][][2]float64
 	for i := range patches.PolygonPatch {
-		single := &gml.SurfacePatchesType{PolygonPatch: patches.PolygonPatch[i : i+1]}
+		single := &gml.SurfacePatches{PolygonPatch: patches.PolygonPatch[i : i+1]}
 		rings, err := extractAllRings(single, res, msg)
 		if err != nil {
 			return nil, fmt.Errorf("geo: patch %d: %w", i, err)
@@ -83,51 +88,30 @@ type AirspaceComponent struct {
 	Operation string
 	// Sequence is the operationSequence (0 when unspecified).
 	Sequence int
-	// Volume is the inline volume, nil when the component is a reference.
-	Volume *features.AirspaceVolumeType
-	// Geometry is GeoJSONPolygon, GeoJSONMultiPolygon, GeoJSONLineString
-	// (corridor centreline) or nil.
+	// Volume is the component's volume.
+	Volume *aixm.AirspaceVolume
+	// Geometry is Polygon, MultiPolygon, LineString (corridor centreline)
+	// or nil.
 	Geometry any
 }
 
-// AirspaceComponents returns the components of the airspace's first
-// timeslice in operationSequence order, each converted to geometry, without
+// AirspaceComponents returns the components of the airspace's first time
+// slice in operationSequence order, each converted to geometry, without
 // combining them.  Unlike AirspaceToGeoJSONWithRefs it accepts INTERS and
 // SUBTR components; callers evaluate the operations themselves, e.g. with
 // PostGIS ST_Intersection / ST_Difference.
-func AirspaceComponents(a *features.AirspaceType, msg *parse.Message) ([]AirspaceComponent, error) {
+func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceComponent, error) {
 	if a == nil || len(a.TimeSlice) == 0 {
-		return nil, fmt.Errorf("geo: airspace has no timeslices")
+		return nil, fmt.Errorf("geo: airspace has no time slices")
 	}
-	ts := a.TimeSlice[0].AirspaceTimeSlice
 	res := centreResolverFor(msg)
-
 	var out []AirspaceComponent
-	for _, gc := range orderedComponents(ts.GeometryComponent) {
-		c := AirspaceComponent{Sequence: componentSequence(gc)}
-		agc := gc.AirspaceGeometryComponent
-		if agc == nil {
-			if gc.HrefAttr == "" || msg == nil {
-				continue
-			}
-			sub, ok := msg.Resolve(gc.HrefAttr)
-			if !ok {
-				continue
-			}
-			subA, ok := sub.(*features.AirspaceType)
-			if !ok {
-				continue
-			}
-			fc, err := AirspaceToGeoJSONWithRefs(subA, msg)
-			if err != nil {
-				return nil, err
-			}
-			c.Geometry = multiOf(polygonsOf(fc))
-			out = append(out, c)
-			continue
+	for _, gc := range orderedComponents(a.TimeSlice[0].GeometryComponent) {
+		c := AirspaceComponent{
+			Operation: codeValue(gc.Operation),
+			Sequence:  componentSequence(gc),
+			Volume:    gc.TheAirspaceVolume,
 		}
-		c.Operation = codeValue(agc.Operation)
-		c.Volume = agc.TheAirspaceVolume.AirspaceVolume
 		if c.Volume != nil {
 			g, err := volumeGeometry(c.Volume, res, msg, 0)
 			if err != nil {
@@ -138,15 +122,4 @@ func AirspaceComponents(a *features.AirspaceType, msg *parse.Message) ([]Airspac
 		out = append(out, c)
 	}
 	return out, nil
-}
-
-func multiOf(polys [][][][2]float64) any {
-	switch len(polys) {
-	case 0:
-		return nil
-	case 1:
-		return GeoJSONPolygon{Type: "Polygon", Coordinates: polys[0]}
-	default:
-		return GeoJSONMultiPolygon{Type: "MultiPolygon", Coordinates: polys}
-	}
 }

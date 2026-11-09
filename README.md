@@ -1,232 +1,217 @@
 # goaixm
 
-A Go library for parsing and working with [AIXM 5.1.1](https://aixm.aero) (Aeronautical Information Exchange Model) data.
+A Go library for parsing and working with [AIXM 5.1.1](https://aixm.aero)
+(Aeronautical Information Exchange Model) data.
 
-## Features
-
-- **Full AIXM 5.1.1 type coverage** — 127 feature types generated from the official XSD schemas
-- **Two-pass XML decoder** — handles polymorphic `hasMember` dispatch correctly
-- **Streaming parser** — O(largest member) memory, suitable for multi-gigabyte NM B2B files
-- **TimeSlice filtering** — filter by interpretation, valid time, or compute the effective state at any point in time (BASELINE + PERMDELTA + TEMPDELTA merging)
-- **XLink resolution** — automatically resolves `xlink:href` cross-references after decode
-- **GeoJSON export** — converts airspace geometry to RFC 7946 GeoJSON: interior rings (holes), geodesic arc and circle discretization on the WGS-84 ellipsoid, referenced GeoBorder resolution, and sub-airspace assembly
-- **Feature validation** — explicit data quality checks per feature type
-- **EUROCONTROL ADR 23.5.0 extension** — opt-in via blank import
-- **Fuzz-tested** — `go test -fuzz` harness with 600k+ iterations, no panics
-
-## Installation
+- **Complete generated model**: all 125 AIXM 5.1.1 features with their time
+  slices, the 114 objects nested in them (airspace classes, segment points,
+  procedure transitions, timesheets, notes, …) and 589 data types, generated
+  from the official schemas. Units of measure and nil reasons are kept.
+- **Parse or stream**: `Parse` indexes the whole message so references can be
+  resolved; `Stream` visits one member at a time with memory bounded by the
+  largest member.
+- **Extensible**: replace a feature type, add overlay schemas decoded
+  alongside the model, or keep unknown members as lossless element trees.
+- **Time slices**: filter by interpretation and validity, pick the current
+  state, merge BASELINE with PERMDELTA/TEMPDELTA.
+- **Geometry**: RFC 7946 GeoJSON for airspaces with geodesic arcs and
+  circles on WGS-84, referenced GeoBorders and contributor airspaces; helpers
+  for every AIXM point, curve and surface.
+- **EUROCONTROL ADR 23.5.0** extension, opt-in.
+- No dependencies outside the standard library.
 
 ```sh
-go get gitlab.com/davidkohl/goaixm
+go get github.com/davidkohl/goaixm
 ```
 
 ## Quick start
 
 ```go
-msg, err := goaixm.ParseFile("data.xml")
+ctx := context.Background()
+msg, err := goaixm.ParseFile(ctx, "data.xml", goaixm.Options{})
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
-
-for _, a := range msg.Airspaces() {
-    if len(a.TimeSlice) == 0 {
-        continue
-    }
-    ts := a.TimeSlice[0].AirspaceTimeSlice
-    if ts.Designator != nil {
-        fmt.Println(ts.Designator.Value)
-    }
+for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
+	ts := a.TimeSlice[0]
+	fmt.Println(a.UUID(), ts.Designator.String(), ts.Type.String())
+	for _, c := range ts.Class {
+		fmt.Println("  class", c.Classification.String())
+	}
 }
 ```
 
-## Streaming large files
+Data types are `aixm.Value` (text, `UOM`, `NilReason`); `String()` and
+`Float()` are nil-safe. References to other features are `aixm.Reference`
+values; follow them with the message:
 
 ```go
-err := goaixm.StreamFile(ctx, "big.xml", func(localName string, feat any) error {
-    if localName == "Airspace" {
-        a := feat.(*features.AirspaceType)
-        fmt.Println(a.GetIdentifier())
-    }
-    return nil
+seg := goaixm.FeaturesOf[*aixm.RouteSegment](msg)[0]
+start := seg.TimeSlice[0].Start.PointChoiceFixDesignatedPoint
+if f, ok := msg.Resolve(start.Href); ok {
+	fmt.Println(f.Kind(), f.(*aixm.DesignatedPoint).TimeSlice[0].Designator.String())
+}
+```
+
+## Streaming
+
+```go
+err := goaixm.StreamFile(ctx, "big.xml", goaixm.Options{}, func(m goaixm.Member) error {
+	if a, ok := m.Feature.(*aixm.Airspace); ok {
+		fmt.Println(a.UUID())
+	}
+	return nil
 })
 ```
 
-## TimeSlice filtering
+Both functions accept `AIXMBasicMessage` and `ADRMessage` documents.
+
+## Options
+
+```go
+opts := goaixm.Options{
+	Registry: reg,                    // nil: all AIXM 5.1.1 features
+	Fallback: goaixm.FallbackGeneric, // keep unknown members as element trees
+	KeepRaw:  true,                   // keep each member's XML (Member.Raw, Member.Node)
+	Strict:   false,                  // first problem becomes an error
+	MaxBytes: 50 << 20,               // fail with ErrTooLarge beyond 50 MB
+	OnWarning: func(w goaixm.Warning) error { log.Print(w); return nil },
+}
+```
+
+Problems with single members are `Warning`s (also in `Message.Warnings`);
+unknown kinds wrap `ErrUnknownFeature`.
+
+## Extending the model
+
+A `Registry` decides how members are decoded. See
+[extensions/README.md](extensions/README.md) for details.
+
+```go
+reg := goaixm.NewDefaultRegistry()
+
+// Overlay: a partial struct decoded alongside the model.
+type myAirspace struct {
+	Activations []string `xml:"http://www.aixm.aero/schema/5.1.1 timeSlice>AirspaceTimeSlice>activation>AirspaceActivation>status"`
+}
+reg.Extend("Airspace", func() any { return new(myAirspace) })
+
+// Replace the type of a feature (it must implement aixm.Feature).
+reg.Register("Unit", func() aixm.Feature { return new(MyUnit) })
+
+msg, _ := goaixm.ParseFile(ctx, path, goaixm.Options{Registry: reg})
+m, _ := msg.Member(airspace)
+ext, ok := goaixm.Extension[*myAirspace](m)
+```
+
+## Time slices
+
+Every time slice implements `aixm.TimeSlice`:
 
 ```go
 slices := filter.Chain(
-    filter.ByInterpretation(features.InterpretationBaseline),
-    filter.ByValidTime(time.Now()),
+	filter.ByInterpretation(aixm.Baseline),
+	filter.ByValidTime(time.Now()),
 ).Apply(airspace.TimeSlices())
+
+ts, err := filter.Current(airspace.TimeSlices(), time.Now()) // SNAPSHOT, or BASELINE+deltas
+merged, err := filter.EffectiveAt(airspace.TimeSlices(), time.Now())
+a := merged.(*aixm.AirspaceTimeSlice)
 ```
 
-## Effective state (BASELINE + deltas)
-
-```go
-state, err := filter.EffectiveAt(airspace.TimeSlices(), time.Now())
-if err != nil {
-    log.Fatal(err) // no BASELINE valid at this time
-}
-ts := state.Slice.(*features.AirspaceTimeSliceType)
-fmt.Println(ts.Designator.Value)
-```
-
-## XLink resolution
-
-```go
-feat, ok := msg.Resolve("urn:uuid:some-uuid-here")
-```
-
-## GeoJSON export
-
-```go
-fc, err := geo.AirspaceToGeoJSON(airspace)
-if err != nil {
-    log.Fatal(err)
-}
-data, _ := geo.MarshalGeoJSON(fc)
-os.WriteFile("airspace.geojson", data, 0644)
-```
-
-Prefer `AirspaceToGeoJSONWithRefs` when you have the message. Geometry that
-lives elsewhere in the document — a national boundary shared through a
-`GeoBorder`, a sub-airspace contributed via `contributorAirspace`, or an arc
-centre held in a separate `Point` — can only be resolved with it:
+## GeoJSON
 
 ```go
 fc, err := geo.AirspaceToGeoJSONWithRefs(airspace, msg)
+data, _ := geo.MarshalGeoJSON(fc)
 ```
 
-Whole message to a single collection:
-
-```go
-msg, _ := goaixm.ParseFile("airspaces.xml")
-
-all := &geo.GeoJSONFeatureCollection{Type: "FeatureCollection"}
-for _, a := range msg.Airspaces() {
-    fc, err := geo.AirspaceToGeoJSONWithRefs(a, msg)
-    if err != nil {
-        continue // no geometry on this airspace
-    }
-    all.Features = append(all.Features, fc.Features...)
-}
-data, _ := geo.MarshalGeoJSON(all)
-os.WriteFile("airspaces.geojson", data, 0644)
-```
-
-### Geometry support
+Pass the message: geometry that lives elsewhere in the document, such as a
+boundary shared through a `GeoBorder`, a sub-airspace contributed via
+`contributorAirspace` or an arc centre held in another feature, can only be
+resolved with it. `geo.AirspaceComponents` returns the components unmerged,
+including `INTERS`/`SUBTR`, for evaluation elsewhere (e.g. PostGIS). For other
+geometry use `geo.FromPoint`, `geo.FromElevatedPoint`, `geo.CurveCoords`,
+`geo.SegmentCoords` and `geo.SurfacePolygons`.
 
 | GML construct | Handling |
 |---|---|
 | `LinearRing`, `GeodesicString`, `LineStringSegment` | Vertices taken as given |
-| `CircleByCenterPoint`, `ArcByCenterPoint` | Discretized geodesically on WGS-84 (Vincenty direct); point count scales with the swept angle |
+| `CircleByCenterPoint`, `ArcByCenterPoint` | Discretised geodesically on WGS-84 (Vincenty direct); point count scales with the swept angle |
 | `Arc`, `Circle` (three-point forms) | Centre found planar, then walked geodesically |
-| `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` |
+| `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` and trimmed to the neighbouring vertices |
 | `aixm:Curve` / `aixm:Point` in a GML slot | Accepted wherever they substitute for the GML element |
 | Mixed segments in one curve | Assembled in document order |
 
-Radii are converted from their unit of measure — `NM`, `KM`, `M`, `FT`, `MI`,
-`CM` and the UCUM spellings including `[nmi_i]`. An unrecognised unit is an
-error rather than an assumed default, since a wrong unit yields a
-plausible-looking but badly wrong polygon.
+Radii are converted from their unit of measure (`NM`, `KM`, `M`, `FT`, `MI`,
+`CM` and the UCUM spellings including `[nmi_i]`). An unrecognised unit is an
+error rather than an assumed default. Rings are closed and wound per
+RFC 7946. `geo.DefaultArcPoints` (64) sets the points of a full circle.
 
-Output rings are closed and wound per RFC 7946: exteriors counter-clockwise,
-holes clockwise.
-
-`geo.DefaultArcPoints` (default 64) sets the number of points used for a full
-circle; arcs use proportionally fewer.
-
-## Feature validation
+## Validation
 
 ```go
-var feats []features.Feature
-for _, v := range msg.Features() {
-    if f, ok := v.(features.Feature); ok {
-        feats = append(feats, f)
-    }
-}
-for _, e := range features.ValidateAll(feats) {
-    fmt.Println(e)
+for _, e := range aixm.ValidateAll(msg.Features()) {
+	fmt.Println(e)
 }
 ```
 
-## Parse options (size limit, strict mode)
+## EUROCONTROL ADR
 
 ```go
-opts := parse.ParseOptions{
-    MaxBytes:   50 * 1024 * 1024, // reject messages over 50 MB
-    StrictMode: false,            // collect warnings instead of erroring
-}
-msg, err := parse.ParseMessageWithOptions(ctx, r, opts)
-fmt.Printf("warnings: %d\n", len(msg.Warnings()))
-```
+reg := goaixm.NewDefaultRegistry()
+adr.Register(reg)
+msg, _ := goaixm.ParseFile(ctx, "adr.xml", goaixm.Options{Registry: reg})
 
-## EUROCONTROL ADR extension
-
-```go
-import _ "gitlab.com/davidkohl/goaixm/extensions/adr"
-
-msg, _ := goaixm.ParseFile("adr_message.xml")
-// ADR feature types are now registered and decoded automatically.
-```
-
-## Custom type support
-
-Feature decoding is driven by a registry mapping XML local names to factory
-functions. To support feature types goaixm doesn't ship (e.g. a national
-AIXM extension), define the struct and register it before parsing —
-typically from an `init()` in your own package, mirroring `extensions/adr`:
-
-```go
-type ObstacleAreaType struct {
-    XMLName   xml.Name `xml:"urn:example:ext ObstacleArea"`
-    ID        string   `xml:"http://www.opengis.net/gml/3.2 id,attr"`
-    TimeSlice []ObstacleAreaTimeSliceType `xml:"urn:example:ext timeSlice>ObstacleAreaTimeSlice"`
-}
-
-func init() {
-    parse.DefaultRegistry.Register("ObstacleArea", func() any {
-        return new(ObstacleAreaType)
-    })
+for _, e := range airport.TimeSlice[0].Extension {
+	if ext, ok := adr.DecodeExtension[adr.AirportHeliportExtension](e); ok {
+		fmt.Println(ext.NMDesignator.String())
+	}
 }
 ```
 
-Registered types are decoded automatically wherever they appear as message
-members and are returned by `msg.ByType("ObstacleArea")` and
-`msg.Features()`. Extension elements inside existing feature timeslices
-(the AIXM `extension` slots) need no registration — declare a struct whose
-`XMLName` matches the extension element, as in
-[`extensions/adr/adr.go`](extensions/adr/adr.go).
+## Layout
 
-## Package structure
-
-| Package | Purpose |
+| Path | Contents |
 |---|---|
-| `goaixm` | Top-level facade: `ParseFile`, `ParseFileWithOptions`, `StreamFile` |
-| `parse` | Two-pass XML decoder, feature registry, streaming decoder |
-| `features` | Generated AIXM feature structs + interfaces, validation |
-| `filter` | TimeSlice filtering and effective-state merging |
-| `geo` | Geometry extraction, WKT, GeoJSON export |
-| `gml` | Hand-crafted GML 3.2.1 types |
-| `types` | Generated AIXM data types |
-| `message` | AIXMBasicMessage and ADRMessage envelope types |
-| `extensions/adr` | EUROCONTROL ADR 23.5.0 extension (opt-in) |
-| `internal/cmd/fixgen` | Code generation post-processor |
+| `.` (package `goaixm`) | `Parse`, `Stream`, `Registry`, `Message`, `Member` |
+| `aixm/` | The AIXM 5.1.1 model; `*_gen.go` are generated |
+| `gml/` | The GML 3.2.1 subset AIXM uses |
+| `geo/` | Coordinates, geodesic arcs, GeoJSON |
+| `filter/` | Time slice selection and merging |
+| `xmlnode/` | Lossless, schema-free XML element trees |
+| `extensions/adr/` | EUROCONTROL ADR 23.5.0 |
+| `tools/` | The model generator and the AIXM schemas (not imported) |
+| `testdata/` | Fixtures and the DONLON reference data (git submodule) |
 
-## Code generation
-
-Feature and data types are generated from the XSD files in `aixm-5.1.1/` using [`xgen`](https://github.com/xuri/xgen) followed by the `fixgen` post-processor (adds XML namespaces, XLink fields, nillable handling).
+## Development
 
 ```sh
-go install github.com/xuri/xgen/cmd/xgen@latest
-go generate ./...
-go build ./...
-go test ./...
+git submodule update --init   # DONLON reference data
+go generate ./...             # regenerate aixm/*_gen.go from tools/xsd
+go vet ./... && go test ./...
+go test -fuzz=FuzzParse -fuzztime=30s .
 ```
 
-Generated files (`features/features.go`, `types/datatypes.go`, `message/message.go`) are build artefacts — do not hand-edit them.
+Tests use the EUROCONTROL [DONLON](https://github.com/aixm/donlon)
+reference data and skip when the submodule is missing. CI also checks gofmt,
+staticcheck and that the generated code is up to date.
 
-> **Note:** The ISO 19139 schemas (`aixm-5.1.1/iso/`) are excluded from the repository due to unclear redistribution rights (© ISO). Before running `go generate`, download them from [https://schemas.opengis.net/iso/19139/20070417/](https://schemas.opengis.net/iso/19139/20070417/) and place them at `aixm-5.1.1/iso/20070417/`.
+## Limitations
+
+- **No schema validation** at parse time: members that cannot be decoded are
+  reported as warnings, not schema errors.
+- **Corridor airspaces** (a `centreline` with a `width`) are returned as a
+  `LineString` with a `width_m` property, not buffered.
+- **Airspace aggregation** in `AirspaceToGeoJSON*` supports `BASE` and
+  `UNION`; `INTERS` and `SUBTR` are rejected rather than approximated (use
+  `AirspaceComponents`).
+- **No CRS reprojection**: coordinates are taken as EPSG:4326
+  latitude/longitude.
+- **No DO-178C / DO-200B certification.** This library has not been through
+  a formal avionics software or data quality assurance process and must not
+  be used as a safety-critical component in operational ATM systems without
+  independent certification.
 
 ## Namespaces
 
@@ -237,25 +222,3 @@ Generated files (`features/features.go`, `types/datatypes.go`, `message/message.
 | `adr` | `http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR` |
 | `gml` | `http://www.opengis.net/gml/3.2` |
 | `xlink` | `http://www.w3.org/1999/xlink` |
-
-## Testing
-
-```sh
-go test ./...
-go test -fuzz=FuzzParseMessage -fuzztime=30s ./parse/...
-go vet ./...
-```
-
-The test suite validates against the official [DONLON](https://ext.eurocontrol.int/aixm_confluence/display/DONLON) reference dataset (147 features, all AIXM 5.1.1 feature types represented).
-
-## Limitations
-
-- **No XML Schema validation** against the AIXM XSDs at parse time — malformed input is skipped with a `ParseWarning`, not rejected with a schema error.
-- **Corridor airspaces** (a `centreline` with a `width`) are emitted as a GeoJSON `LineString` carrying a `width_m` property. They are **not** buffered into a polygon — a correct geodesic buffer needs offset curves, join and cap handling and self-intersection cleanup, which is outside this library's scope. Buffer the centreline downstream if you need an area.
-- **Airspace aggregation** supports the `BASE` and `UNION` operations. `INTERS` and `SUBTR` require polygon boolean operations and are rejected with an error rather than silently approximated.
-- **No CRS reprojection.** All coordinates are assumed to be EPSG:4326 in latitude-longitude order, which is what AIXM data uses in practice; `srsName` is parsed but not interpreted.
-- **No DO-178C / DO-200B certification** — this library has not been through a formal avionics software or data quality assurance process. It must not be used as a safety-critical component in operational ATM systems without independent certification.
-
-## License
-
-See [LICENSE](LICENSE).

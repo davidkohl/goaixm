@@ -1,146 +1,140 @@
-// Package adr provides EUROCONTROL ADR 23.5.0 extension types for AIXM 5.1.1.
+// Package adr provides the EUROCONTROL ADR 23.5.0 extensions of AIXM 5.1.1:
+// the ADR-only features (AirportHeliportSet, AirportHeliportSetPattern) and
+// the extension objects ADR adds to AIXM time slices.
 //
-// Import this package with a blank import to register ADR features with the parse registry:
+// Register the ADR features with a registry before parsing:
 //
-//	import _ "gitlab.com/davidkohl/goaixm/extensions/adr"
+//	reg := goaixm.NewDefaultRegistry()
+//	adr.Register(reg)
+//	msg, err := goaixm.ParseFile(ctx, path, goaixm.Options{Registry: reg})
+//
+// ADR extension objects arrive in the Extension slots of AIXM time slices;
+// decode them with DecodeExtension:
+//
+//	for _, e := range airport.TimeSlice[0].Extension {
+//		if ext, ok := adr.DecodeExtension[adr.AirportHeliportExtension](e); ok {
+//			fmt.Println(ext.NMDesignator.String())
+//		}
+//	}
 package adr
 
 import (
 	"encoding/xml"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/parse"
-	"gitlab.com/davidkohl/goaixm/types"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
 )
 
+// Namespace is the ADR extension XML namespace.
 const Namespace = "http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR"
 
-// ---- ADR Data Types -------------------------------------------------------
+// ---- data types ---------------------------------------------------------------
 
-// AircraftAddressesType holds a list of aircraft Mode S addresses.
-type AircraftAddressesType = types.NilableString
+// AircraftAddresses holds a list of aircraft Mode S addresses.
+type AircraftAddresses = aixm.Value
 
-// AircraftRegistrationsType holds a list of aircraft registration strings.
-type AircraftRegistrationsType = types.NilableString
+// AircraftRegistrations holds a list of aircraft registrations.
+type AircraftRegistrations = aixm.Value
 
-// CodeAirportHeliportNMDesignatorType is the NM designator for an aerodrome.
-type CodeAirportHeliportNMDesignatorType = types.NilableString
+// CodeAirportHeliportNMDesignator is the Network Manager designator of an
+// aerodrome.
+type CodeAirportHeliportNMDesignator = aixm.Value
 
-// CodeAirspaceReservationImpactType codes the operational impact of an airspace reservation.
-type CodeAirspaceReservationImpactType = types.NilableString
+// CodeAirspaceReservationImpact codes the operational impact of an airspace
+// reservation.
+type CodeAirspaceReservationImpact = aixm.Value
 
-// ---- Extension types (injected into AIXM timeslice extension slots) --------
+// ---- extension objects (carried in AIXM time slice extension slots) ------------
 
-// AircraftCharacteristicExtensionType extends AircraftCharacteristic timeslices.
-type AircraftCharacteristicExtensionType struct {
-	XMLName              xml.Name                  `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AircraftCharacteristicExtension"`
-	AircraftAddresses    *AircraftAddressesType    `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR aircraftAddresses,omitempty"`
-	AircraftRegistrations *AircraftRegistrationsType `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR aircraftRegistrations,omitempty"`
+// AircraftCharacteristicExtension extends aixm.AircraftCharacteristic.
+type AircraftCharacteristicExtension struct {
+	XMLName               xml.Name               `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AircraftCharacteristicExtension"`
+	AircraftAddresses     *AircraftAddresses     `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR aircraftAddresses"`
+	AircraftRegistrations *AircraftRegistrations `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR aircraftRegistrations"`
 }
 
-// AirportHeliportExtensionType extends AirportHeliport timeslices.
-type AirportHeliportExtensionType struct {
-	XMLName        xml.Name                          `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportExtension"`
-	DefaultTaxiTime *types.ValDurationType           `xml:"http://www.aixm.aero/schema/5.1.1 defaultTaxiTime,omitempty"`
-	NMDesignator   *CodeAirportHeliportNMDesignatorType `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR nmDesignator,omitempty"`
+// AirportHeliportExtension extends aixm.AirportHeliportTimeSlice.
+type AirportHeliportExtension struct {
+	XMLName         xml.Name                         `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportExtension"`
+	DefaultTaxiTime *aixm.ValDuration                `xml:"http://www.aixm.aero/schema/5.1.1 defaultTaxiTime"`
+	NMDesignator    *CodeAirportHeliportNMDesignator `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR nmDesignator"`
 }
 
-// AirspaceExtensionType extends Airspace timeslices.
-type AirspaceExtensionType struct {
-	XMLName          xml.Name             `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirspaceExtension"`
-	FlexibleUse      *types.NilableString `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR flexibleUse,omitempty"`
-	LevelChargeFlag  *types.NilableString `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR levelChargeFlag,omitempty"`
+// AirspaceExtension extends aixm.AirspaceTimeSlice.
+type AirspaceExtension struct {
+	XMLName         xml.Name    `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirspaceExtension"`
+	FlexibleUse     *aixm.Value `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR flexibleUse"`
+	LevelChargeFlag *aixm.Value `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR levelChargeFlag"`
 }
 
-// ---- ADR feature types (new features, not extensions to existing ones) ----
-
-// AirportHeliportSetType is an ADR feature grouping airports/heliports.
-type AirportHeliportSetType struct {
-	XMLName    xml.Name                                    `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSet"`
-	GMLID      string                                      `xml:"http://www.opengis.net/gml/3.2 id,attr,omitempty"`
-	Identifier *gml.CodeType                               `xml:"http://www.opengis.net/gml/3.2 identifier"`
-	Name       []gml.CodeType                              `xml:"http://www.opengis.net/gml/3.2 name"`
-	TimeSlice  []AirportHeliportSetTimeSlicePropertyType   `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR timeSlice"`
-}
-
-func (f *AirportHeliportSetType) GetGMLID() string      { return f.GMLID }
-func (f *AirportHeliportSetType) GetIdentifier() string {
-	if f.Identifier == nil {
-		return ""
+// DecodeExtension decodes an AIXM extension slot into the ADR extension
+// object T (e.g. AirportHeliportExtension).  It reports false when the slot
+// holds a different extension.
+func DecodeExtension[T AircraftCharacteristicExtension | AirportHeliportExtension | AirspaceExtension](e aixm.Extension) (*T, bool) {
+	v := new(T)
+	if err := xml.Unmarshal(e.Inner, v); err != nil {
+		return nil, false
 	}
-	return f.Identifier.Value
-}
-func (f *AirportHeliportSetType) GetNames() []string {
-	out := make([]string, len(f.Name))
-	for i, n := range f.Name {
-		out[i] = n.Value
-	}
-	return out
+	return v, true
 }
 
-// AirportHeliportSetTimeSlicePropertyType wraps a timeslice.
-type AirportHeliportSetTimeSlicePropertyType struct {
-	AirportHeliportSetTimeSlice AirportHeliportSetTimeSliceType `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetTimeSlice"`
-	Owns                        bool                            `xml:"owns,attr,omitempty"`
+// ---- ADR features -------------------------------------------------------------
+
+// AirportHeliportSet is an ADR feature grouping aerodromes.
+type AirportHeliportSet struct {
+	XMLName xml.Name `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSet"`
+	aixm.FeatureCommon
+	TimeSlice []AirportHeliportSetTimeSlice `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR timeSlice>AirportHeliportSetTimeSlice"`
 }
 
-// AirportHeliportSetTimeSliceType carries temporal properties.
-type AirportHeliportSetTimeSliceType struct {
-	XMLName          xml.Name                        `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetTimeSlice"`
-	GMLID            string                          `xml:"http://www.opengis.net/gml/3.2 id,attr,omitempty"`
-	ValidTime         gml.TimePrimitivePropertyType  `xml:"http://www.opengis.net/gml/3.2 validTime"`
-	Interpretation   string                          `xml:"http://www.aixm.aero/schema/5.1.1 interpretation"`
-	SequenceNumber   *uint32                         `xml:"http://www.aixm.aero/schema/5.1.1 sequenceNumber,omitempty"`
-	CorrectionNumber *uint32                         `xml:"http://www.aixm.aero/schema/5.1.1 correctionNumber,omitempty"`
-	Name             *types.NilableString            `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR name,omitempty"`
-	Extension        []features.ExtensionContainer   `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR extension"`
+// AirportHeliportSetTimeSlice holds the properties of an AirportHeliportSet.
+type AirportHeliportSetTimeSlice struct {
+	aixm.TimeSliceCommon
+	Name      *aixm.Value      `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR name"`
+	Extension []aixm.Extension `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR extension"`
 }
 
-// AirportHeliportSetPatternType is an ADR feature defining a pattern for airport sets.
-type AirportHeliportSetPatternType struct {
-	XMLName    xml.Name                                          `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetPattern"`
-	GMLID      string                                            `xml:"http://www.opengis.net/gml/3.2 id,attr,omitempty"`
-	Identifier *gml.CodeType                                     `xml:"http://www.opengis.net/gml/3.2 identifier"`
-	Name       []gml.CodeType                                    `xml:"http://www.opengis.net/gml/3.2 name"`
-	TimeSlice  []AirportHeliportSetPatternTimeSlicePropertyType  `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR timeSlice"`
-}
+// Kind returns "AirportHeliportSet".
+func (*AirportHeliportSet) Kind() string { return "AirportHeliportSet" }
 
-func (f *AirportHeliportSetPatternType) GetGMLID() string      { return f.GMLID }
-func (f *AirportHeliportSetPatternType) GetIdentifier() string {
-	if f.Identifier == nil {
-		return ""
-	}
-	return f.Identifier.Value
-}
-func (f *AirportHeliportSetPatternType) GetNames() []string {
-	out := make([]string, len(f.Name))
-	for i, n := range f.Name {
-		out[i] = n.Value
+// TimeSlices returns the feature's time slices.
+func (f *AirportHeliportSet) TimeSlices() []aixm.TimeSlice {
+	out := make([]aixm.TimeSlice, len(f.TimeSlice))
+	for i := range f.TimeSlice {
+		out[i] = &f.TimeSlice[i]
 	}
 	return out
 }
 
-// AirportHeliportSetPatternTimeSlicePropertyType wraps a timeslice.
-type AirportHeliportSetPatternTimeSlicePropertyType struct {
-	AirportHeliportSetPatternTimeSlice AirportHeliportSetPatternTimeSliceType `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetPatternTimeSlice"`
-	Owns                               bool                                   `xml:"owns,attr,omitempty"`
+// AirportHeliportSetPattern is an ADR feature defining a pattern for
+// aerodrome sets.
+type AirportHeliportSetPattern struct {
+	XMLName xml.Name `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetPattern"`
+	aixm.FeatureCommon
+	TimeSlice []AirportHeliportSetPatternTimeSlice `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR timeSlice>AirportHeliportSetPatternTimeSlice"`
 }
 
-// AirportHeliportSetPatternTimeSliceType carries temporal properties.
-type AirportHeliportSetPatternTimeSliceType struct {
-	XMLName          xml.Name                        `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR AirportHeliportSetPatternTimeSlice"`
-	GMLID            string                          `xml:"http://www.opengis.net/gml/3.2 id,attr,omitempty"`
-	ValidTime         gml.TimePrimitivePropertyType  `xml:"http://www.opengis.net/gml/3.2 validTime"`
-	Interpretation   string                          `xml:"http://www.aixm.aero/schema/5.1.1 interpretation"`
-	SequenceNumber   *uint32                         `xml:"http://www.aixm.aero/schema/5.1.1 sequenceNumber,omitempty"`
-	CorrectionNumber *uint32                         `xml:"http://www.aixm.aero/schema/5.1.1 correctionNumber,omitempty"`
-	Extension        []features.ExtensionContainer   `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR extension"`
+// AirportHeliportSetPatternTimeSlice holds the properties of an
+// AirportHeliportSetPattern.
+type AirportHeliportSetPatternTimeSlice struct {
+	aixm.TimeSliceCommon
+	Extension []aixm.Extension `xml:"http://www.aixm.aero/schema/5.1.1/extensions/EUR/ADR extension"`
 }
 
-// ---- Registration ----------------------------------------------------------
+// Kind returns "AirportHeliportSetPattern".
+func (*AirportHeliportSetPattern) Kind() string { return "AirportHeliportSetPattern" }
 
-func init() {
-	parse.DefaultRegistry.Register("AirportHeliportSet", func() any { return new(AirportHeliportSetType) })
-	parse.DefaultRegistry.Register("AirportHeliportSetPattern", func() any { return new(AirportHeliportSetPatternType) })
+// TimeSlices returns the feature's time slices.
+func (f *AirportHeliportSetPattern) TimeSlices() []aixm.TimeSlice {
+	out := make([]aixm.TimeSlice, len(f.TimeSlice))
+	for i := range f.TimeSlice {
+		out[i] = &f.TimeSlice[i]
+	}
+	return out
+}
+
+// Register adds the ADR features to reg.
+func Register(reg *goaixm.Registry) {
+	reg.Register("AirportHeliportSet", func() aixm.Feature { return new(AirportHeliportSet) })
+	reg.Register("AirportHeliportSetPattern", func() aixm.Feature { return new(AirportHeliportSetPattern) })
 }

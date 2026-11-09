@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm/xmlnode"
+	"github.com/davidkohl/goaixm/xmlnode"
 )
 
 // Tests run against the EUROCONTROL DONLON reference data set.

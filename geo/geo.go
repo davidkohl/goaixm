@@ -1,4 +1,14 @@
-// Package geo provides geometry helpers for extracting coordinates from AIXM features.
+// Package geo converts AIXM geometry to coordinates and RFC 7946 GeoJSON.
+//
+// Airspaces are assembled from their volumes, including arcs and circles
+// (discretised geodesically on the WGS-84 ellipsoid), referenced GeoBorders
+// and contributor airspaces:
+//
+//	fc, err := geo.AirspaceToGeoJSONWithRefs(airspace, msg)
+//
+// The lower-level helpers (FromPoint, SegmentCoords, SurfacePolygons, …)
+// work on any aixm geometry, including that of custom extension types.
+// All coordinate pairs are [lon, lat].
 package geo
 
 import (
@@ -6,8 +16,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/gml"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/gml"
 )
 
 // Coordinate represents a WGS-84 longitude/latitude position with optional elevation.
@@ -16,8 +26,9 @@ type Coordinate struct {
 	Elev     float64 // metres above MSL; 0 if unknown
 }
 
-// FromPoint extracts the coordinate from an AIXM ElevatedPoint.
-func FromPoint(p *features.ElevatedPointType) (Coordinate, error) {
+// FromElevatedPoint extracts the coordinate and elevation of an
+// aixm:ElevatedPoint.
+func FromElevatedPoint(p *aixm.ElevatedPoint) (Coordinate, error) {
 	if p == nil {
 		return Coordinate{}, fmt.Errorf("geo: nil ElevatedPoint")
 	}
@@ -35,23 +46,23 @@ func FromPoint(p *features.ElevatedPointType) (Coordinate, error) {
 	return c, nil
 }
 
-// FromSurface extracts the exterior ring coordinates from an AIXM ElevatedSurface.
-func FromSurface(s *features.ElevatedSurfaceType) ([]Coordinate, error) {
+// FromElevatedSurface extracts the exterior ring of an aixm:ElevatedSurface.
+func FromElevatedSurface(s *aixm.ElevatedSurface) ([]Coordinate, error) {
 	if s == nil {
 		return nil, fmt.Errorf("geo: nil ElevatedSurface")
 	}
 	return extractSurface(s.Patches, s.SrsDimension)
 }
 
-// FromSurfaceBase extracts exterior ring coordinates from an AIXM SurfaceType.
-func FromSurfaceBase(s *features.SurfaceType) ([]Coordinate, error) {
+// FromSurface extracts the exterior ring of an aixm:Surface.
+func FromSurface(s *aixm.Surface) ([]Coordinate, error) {
 	if s == nil {
 		return nil, fmt.Errorf("geo: nil Surface")
 	}
 	return extractSurface(s.Patches, s.SrsDimension)
 }
 
-func extractSurface(patches *gml.SurfacePatchesType, dim uint) ([]Coordinate, error) {
+func extractSurface(patches *gml.SurfacePatches, dim uint) ([]Coordinate, error) {
 	if patches == nil || len(patches.PolygonPatch) == 0 {
 		return nil, fmt.Errorf("geo: surface has no patches")
 	}

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm/geo"
+	"github.com/davidkohl/goaixm/geo"
 )
 
 // Flinders Peak -> Buninyong, the classic Vincenty (1975) test line.

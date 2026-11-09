@@ -1,6 +1,7 @@
 package geo_test
 
 import (
+	"context"
 	"encoding/xml"
 	"math"
 	"os"
@@ -9,23 +10,22 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm"
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/geo"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/types"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/geo"
+	"github.com/davidkohl/goaixm/gml"
 )
 
 const donlonPath = "../testdata/donlon/EA_AIP_DS_FULL_20170701.xml"
 
 // ringsOf returns every linear ring in a feature collection.
-func ringsOf(fc *geo.GeoJSONFeatureCollection) [][][2]float64 {
+func ringsOf(fc *geo.FeatureCollection) [][][2]float64 {
 	var out [][][2]float64
 	for _, f := range fc.Features {
 		switch g := f.Geometry.(type) {
-		case geo.GeoJSONPolygon:
+		case geo.Polygon:
 			out = append(out, g.Coordinates...)
-		case geo.GeoJSONMultiPolygon:
+		case geo.MultiPolygon:
 			for _, poly := range g.Coordinates {
 				out = append(out, poly...)
 			}
@@ -56,20 +56,20 @@ func checkRing(t *testing.T, label string, ring [][2]float64, exterior bool) {
 // TestAirspaceToGeoJSONDonlonAll requires that every airspace in the reference
 // dataset converts, and that every ring it produces is valid GeoJSON.
 func TestAirspaceToGeoJSONDonlonAll(t *testing.T) {
-	msg, err := goaixm.ParseFile(donlonPath)
+	msg, err := goaixm.ParseFile(context.Background(), donlonPath, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
 	}
 
-	airspaces := msg.Airspaces()
+	airspaces := goaixm.FeaturesOf[*aixm.Airspace](msg)
 	if len(airspaces) == 0 {
 		t.Fatal("no airspaces in the reference dataset")
 	}
 
 	for _, a := range airspaces {
-		name := a.GetIdentifier()
+		name := a.UUID()
 		if len(a.TimeSlice) > 0 {
-			if d := a.TimeSlice[0].AirspaceTimeSlice.Designator; d != nil {
+			if d := a.TimeSlice[0].Designator; d != nil {
 				name = d.Value
 			}
 		}
@@ -101,7 +101,7 @@ func TestDonlonAuxiliaryDatasets(t *testing.T) {
 	}
 
 	for _, path := range paths {
-		msg, err := goaixm.ParseFile(path)
+		msg, err := goaixm.ParseFile(context.Background(), path, goaixm.Options{})
 		if err != nil {
 			// A few of the digital NOTAM samples are not well-formed XML
 			// (an unescaped "--" inside a comment, a mismatched tag).  That
@@ -109,14 +109,14 @@ func TestDonlonAuxiliaryDatasets(t *testing.T) {
 			t.Logf("%s: skipped, will not parse: %v", filepath.Base(path), err)
 			continue
 		}
-		for _, a := range msg.Airspaces() {
+		for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
 			fc, err := geo.AirspaceToGeoJSONWithRefs(a, msg)
 			if err != nil {
 				// Not every sample carries geometry; only malformed output matters.
 				continue
 			}
 			for i, ring := range ringsOf(fc) {
-				checkRing(t, filepath.Base(path)+" "+a.GetIdentifier(), ring, i == 0)
+				checkRing(t, filepath.Base(path)+" "+a.UUID(), ring, i == 0)
 			}
 		}
 	}
@@ -168,19 +168,19 @@ func TestCircleByCenterPointGeodesicRadius(t *testing.T) {
 // returns its exterior ring.
 func circleRing(t *testing.T, lat, lon, radius float64, uom string) [][2]float64 {
 	t.Helper()
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{{
-				Exterior: &gml.AbstractRingPropertyType{
-					Ring: &gml.RingType{
-						CurveMember: []gml.CurveMemberType{{
-							Curve: &gml.CurveType{
-								Segments: &gml.CurveSegmentsType{
-									CircleByCenterPoint: []gml.CircleByCenterPointType{{
-										PosList: &gml.DirectPositionListType{
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{{
+				Exterior: &gml.AbstractRingProperty{
+					Ring: &gml.Ring{
+						CurveMember: []gml.CurveMember{{
+							Curve: &gml.Curve{
+								Segments: &gml.CurveSegments{
+									CircleByCenterPoint: []gml.CircleByCenterPoint{{
+										PosList: &gml.DirectPositionList{
 											Value: formatLatLon(lat, lon),
 										},
-										Radius: gml.MeasureType{Value: radius, Uom: uom},
+										Radius: gml.Measure{Value: radius, UOM: uom},
 									}},
 								},
 							},
@@ -195,7 +195,7 @@ func circleRing(t *testing.T, lat, lon, radius float64, uom string) [][2]float64
 	if err != nil {
 		t.Fatalf("AirspaceToGeoJSON: %v", err)
 	}
-	poly, ok := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
+	poly, ok := fc.Features[0].Geometry.(geo.Polygon)
 	if !ok {
 		t.Fatalf("geometry is %T, want a Polygon", fc.Features[0].Geometry)
 	}
@@ -211,17 +211,17 @@ func formatLatLon(lat, lon float64) string {
 // unit rather than assume one: silently treating nautical miles as metres
 // would shrink a circle by a factor of 1852.
 func TestUnknownRadiusUnitIsRejected(t *testing.T) {
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{{
-				Exterior: &gml.AbstractRingPropertyType{
-					Ring: &gml.RingType{
-						CurveMember: []gml.CurveMemberType{{
-							Curve: &gml.CurveType{
-								Segments: &gml.CurveSegmentsType{
-									CircleByCenterPoint: []gml.CircleByCenterPointType{{
-										PosList: &gml.DirectPositionListType{Value: "52.0 -22.0"},
-										Radius:  gml.MeasureType{Value: 15, Uom: "FURLONGS"},
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{{
+				Exterior: &gml.AbstractRingProperty{
+					Ring: &gml.Ring{
+						CurveMember: []gml.CurveMember{{
+							Curve: &gml.Curve{
+								Segments: &gml.CurveSegments{
+									CircleByCenterPoint: []gml.CircleByCenterPoint{{
+										PosList: &gml.DirectPositionList{Value: "52.0 -22.0"},
+										Radius:  gml.Measure{Value: 15, UOM: "FURLONGS"},
 									}},
 								},
 							},
@@ -251,7 +251,7 @@ func TestSegmentOrderPreserved(t *testing.T) {
 	  <GeodesicString><posList>54.928163 -35.674116 55.233333 -36.166666</posList></GeodesicString>
 	</segments>`
 
-	var segs gml.CurveSegmentsType
+	var segs gml.CurveSegments
 	if err := xml.Unmarshal([]byte(doc), &segs); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
@@ -282,9 +282,9 @@ func TestSegmentOrderPreserved(t *testing.T) {
 // built in Go, which never passed through the decoder and so recorded no
 // document order, still reports its segments.
 func TestOrderedFallsBackForConstructedValues(t *testing.T) {
-	segs := gml.CurveSegmentsType{
-		Arc:    []gml.ArcType{{}},
-		Circle: []gml.CircleType{{}},
+	segs := gml.CurveSegments{
+		Arc:    []gml.Arc{{}},
+		Circle: []gml.Circle{{}},
 	}
 	if got := len(segs.Ordered()); got != 2 {
 		t.Errorf("Ordered() returned %d segments, want 2", got)
@@ -304,23 +304,23 @@ func TestCurveMemberAcceptsAIXMCurve(t *testing.T) {
 	  <gml:curveMember xlink:href="urn:uuid:some-border"/>
 	</Ring>`
 
-	var ring gml.RingType
+	var ring gml.Ring
 	if err := xml.Unmarshal([]byte(doc), &ring); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if len(ring.CurveMember) != 3 {
 		t.Fatalf("got %d curve members, want 3", len(ring.CurveMember))
 	}
-	if c := ring.CurveMember[0].TheCurve(); c == nil || c.ID != "A" {
+	if c := ring.CurveMember[0].Curve; c == nil || c.ID != "A" {
 		t.Errorf("gml:Curve member was not decoded")
 	}
-	if c := ring.CurveMember[1].TheCurve(); c == nil || c.ID != "B" {
+	if c := ring.CurveMember[1].Curve; c == nil || c.ID != "B" {
 		t.Errorf("aixm:Curve member was not decoded")
 	}
-	if ring.CurveMember[2].TheCurve() != nil {
+	if ring.CurveMember[2].Curve != nil {
 		t.Errorf("reference-only member should hold no inline curve")
 	}
-	if got := ring.CurveMember[2].HrefAttr; got != "urn:uuid:some-border" {
+	if got := ring.CurveMember[2].Href; got != "urn:uuid:some-border" {
 		t.Errorf("reference-only member href = %q", got)
 	}
 }
@@ -337,7 +337,7 @@ func TestPointPropertyAcceptsAIXMPoint(t *testing.T) {
 	  </aixm:Point>
 	</pointProperty>`
 
-	var pp gml.PointPropertyType
+	var pp gml.PointProperty
 	if err := xml.Unmarshal([]byte(doc), &pp); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestPointPropertyAcceptsAIXMPoint(t *testing.T) {
 // A GeoBorder is a whole national boundary; splicing it in untrimmed inflates
 // a control zone to the size of the country.
 func TestReferencedBorderIsTrimmed(t *testing.T) {
-	msg, err := goaixm.ParseFile(donlonPath)
+	msg, err := goaixm.ParseFile(context.Background(), donlonPath, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
 	}
@@ -366,17 +366,17 @@ func TestReferencedBorderIsTrimmed(t *testing.T) {
 	// varies from an aerodrome control zone to a whole flight information
 	// region.
 	borderSpan := 0.0
-	for _, f := range msg.ByType("GeoBorder") {
-		b, ok := f.(*features.GeoBorderType)
+	for _, f := range msg.ByKind("GeoBorder") {
+		b, ok := f.(*aixm.GeoBorder)
 		if !ok {
 			continue
 		}
 		for _, ts := range b.TimeSlice {
-			bts := ts.GeoBorderTimeSlice
-			if bts.Border == nil || bts.Border.Curve == nil {
+			segs := ts.Border.Segments()
+			if segs == nil {
 				continue
 			}
-			for _, seg := range bts.Border.Curve.Segments.Ordered() {
+			for _, seg := range segs.Ordered() {
 				if seg.GeodesicString == nil || seg.GeodesicString.PosList == nil {
 					continue
 				}
@@ -401,11 +401,11 @@ func TestReferencedBorderIsTrimmed(t *testing.T) {
 		t.Skip("no GeoBorder geometry in the reference dataset")
 	}
 
-	for _, a := range msg.Airspaces() {
+	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
 		if len(a.TimeSlice) == 0 {
 			continue
 		}
-		ts := a.TimeSlice[0].AirspaceTimeSlice
+		ts := a.TimeSlice[0]
 
 		// Only airspaces that actually reference a border can exhibit the bug.
 		if !referencesBorder(ts) {
@@ -416,7 +416,7 @@ func TestReferencedBorderIsTrimmed(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		name := a.GetIdentifier()
+		name := a.UUID()
 		if ts.Designator != nil {
 			name = ts.Designator.Value
 		}
@@ -436,13 +436,12 @@ func TestReferencedBorderIsTrimmed(t *testing.T) {
 
 // referencesBorder reports whether any ring of the timeslice takes part of its
 // boundary from a GeoBorder held elsewhere in the message.
-func referencesBorder(ts features.AirspaceTimeSliceType) bool {
+func referencesBorder(ts aixm.AirspaceTimeSlice) bool {
 	for _, gc := range ts.GeometryComponent {
-		agc := gc.AirspaceGeometryComponent
-		if agc == nil || agc.TheAirspaceVolume.AirspaceVolume == nil {
+		if gc.TheAirspaceVolume == nil {
 			continue
 		}
-		patches := agc.TheAirspaceVolume.AirspaceVolume.HorizontalProjection.Patches()
+		patches := gc.TheAirspaceVolume.HorizontalProjection.Patches()
 		if patches == nil {
 			continue
 		}
@@ -451,7 +450,7 @@ func referencesBorder(ts features.AirspaceTimeSliceType) bool {
 				continue
 			}
 			for _, cm := range patch.Exterior.Ring.CurveMember {
-				if cm.TheCurve() == nil && cm.HrefAttr != "" {
+				if cm.Curve == nil && cm.Href != "" {
 					return true
 				}
 			}
@@ -464,13 +463,13 @@ func referencesBorder(ts features.AirspaceTimeSliceType) bool {
 // referenced border reports that it cannot be resolved, rather than silently
 // emitting a ring that is missing a side.
 func TestReferencedBorderNeedsMessage(t *testing.T) {
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{{
-				Exterior: &gml.AbstractRingPropertyType{
-					Ring: &gml.RingType{
-						CurveMember: []gml.CurveMemberType{
-							{HrefAttr: "urn:uuid:missing-border"},
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{{
+				Exterior: &gml.AbstractRingProperty{
+					Ring: &gml.Ring{
+						CurveMember: []gml.CurveMember{
+							{Href: "urn:uuid:missing-border"},
 						},
 					},
 				},
@@ -485,12 +484,12 @@ func TestReferencedBorderNeedsMessage(t *testing.T) {
 // TestElevatedSurfaceProjection verifies that a horizontal projection given as
 // an ElevatedSurface is used; only aixm:Surface was recognised before.
 func TestElevatedSurfaceProjection(t *testing.T) {
-	elevated := &features.ElevatedSurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{{
-				Exterior: &gml.AbstractRingPropertyType{
-					LinearRing: &gml.LinearRingType{
-						PosList: &gml.DirectPositionListType{
+	elevated := &aixm.ElevatedSurface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{{
+				Exterior: &gml.AbstractRingProperty{
+					LinearRing: &gml.LinearRing{
+						PosList: &gml.DirectPositionList{
 							Value: "51.0 -1.0 51.0 0.0 52.0 0.0 51.0 -1.0",
 						},
 					},
@@ -499,25 +498,19 @@ func TestElevatedSurfaceProjection(t *testing.T) {
 		},
 	}
 
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	seq, cor := uint32(1), uint32(0)
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{
-		AirspaceTimeSlice: features.AirspaceTimeSliceType{
-			Interpretation:   "BASELINE",
-			SequenceNumber:   &seq,
-			CorrectionNumber: &cor,
-			GeometryComponent: []features.AirspaceGeometryComponentPropertyType{{
-				AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-					TheAirspaceVolume: features.AirspaceVolumePropertyType{
-						AirspaceVolume: &features.AirspaceVolumeType{
-							HorizontalProjection: features.HorizontalProjectionType{
-								ElevatedSurface: elevated,
-							},
-						},
-					},
+	a.TimeSlice = []aixm.AirspaceTimeSlice{{
+
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &cor},
+		GeometryComponent: []aixm.AirspaceGeometryComponent{{
+
+			TheAirspaceVolume: &aixm.AirspaceVolume{
+				HorizontalProjection: &aixm.SurfaceProperty{
+					ElevatedSurface: elevated,
 				},
-			}},
-		},
+			},
+		}},
 	}}
 
 	fc, err := geo.AirspaceToGeoJSON(a)
@@ -535,17 +528,17 @@ func TestElevatedSurfaceProjection(t *testing.T) {
 // a width — is emitted as a LineString carrying its width, rather than being
 // dropped or buffered into a polygon.
 func TestCentrelineCorridor(t *testing.T) {
-	msg, err := goaixm.ParseFile(donlonPath)
+	msg, err := goaixm.ParseFile(context.Background(), donlonPath, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
 	}
 
 	var found bool
-	for _, a := range msg.Airspaces() {
+	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
 		if len(a.TimeSlice) == 0 {
 			continue
 		}
-		d := a.TimeSlice[0].AirspaceTimeSlice.Designator
+		d := a.TimeSlice[0].Designator
 		if d == nil || d.Value != "ACR001" {
 			continue
 		}
@@ -555,7 +548,7 @@ func TestCentrelineCorridor(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ACR001: %v", err)
 		}
-		line, ok := fc.Features[0].Geometry.(geo.GeoJSONLineString)
+		line, ok := fc.Features[0].Geometry.(geo.LineString)
 		if !ok {
 			t.Fatalf("ACR001 geometry is %T, want a LineString", fc.Features[0].Geometry)
 		}
@@ -577,26 +570,26 @@ func TestCentrelineCorridor(t *testing.T) {
 // TestContributorAirspaceAggregation verifies that an airspace defining its
 // geometry only by reference to contributing airspaces is assembled from them.
 func TestContributorAirspaceAggregation(t *testing.T) {
-	msg, err := goaixm.ParseFile(donlonPath)
+	msg, err := goaixm.ParseFile(context.Background(), donlonPath, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
 	}
 
 	var found bool
-	for _, a := range msg.Airspaces() {
+	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
 		if len(a.TimeSlice) == 0 {
 			continue
 		}
-		d := a.TimeSlice[0].AirspaceTimeSlice.Designator
+		d := a.TimeSlice[0].Designator
 		if d == nil || d.Value != "EAMM" {
 			continue
 		}
 		found = true
 
-		// The parser resolves the contributor references while decoding, so
-		// the aggregated geometry is reachable from the feature alone.
-		if _, err := geo.AirspaceToGeoJSON(a); err != nil {
-			t.Errorf("EAMM without a message: %v", err)
+		// The contributors are separate features: without the message there
+		// is nothing to assemble.
+		if _, err := geo.AirspaceToGeoJSON(a); err == nil {
+			t.Error("EAMM converted without a message; contributors need it")
 		}
 
 		fc, err := geo.AirspaceToGeoJSONWithRefs(a, msg)
@@ -621,26 +614,20 @@ func TestContributorAirspaceAggregation(t *testing.T) {
 // produce a wrong shape rather than an approximate one.
 func TestUnsupportedAggregationRejected(t *testing.T) {
 	surf := makeSurfacePosList("51.0 -1.0 51.0 0.0 52.0 0.0 51.0 -1.0")
-	op := types.CodeAirspaceAggregationType{Value: "SUBTR"}
+	op := aixm.CodeAirspaceAggregation{Value: "SUBTR"}
 
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	seq, cor := uint32(1), uint32(0)
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{
-		AirspaceTimeSlice: features.AirspaceTimeSliceType{
-			Interpretation:   "BASELINE",
-			SequenceNumber:   &seq,
-			CorrectionNumber: &cor,
-			GeometryComponent: []features.AirspaceGeometryComponentPropertyType{{
-				AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-					Operation: &op,
-					TheAirspaceVolume: features.AirspaceVolumePropertyType{
-						AirspaceVolume: &features.AirspaceVolumeType{
-							HorizontalProjection: features.HorizontalProjectionType{Surface: surf},
-						},
-					},
-				},
-			}},
-		},
+	a.TimeSlice = []aixm.AirspaceTimeSlice{{
+
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &cor},
+		GeometryComponent: []aixm.AirspaceGeometryComponent{{
+
+			Operation: &op,
+			TheAirspaceVolume: &aixm.AirspaceVolume{
+				HorizontalProjection: &aixm.SurfaceProperty{Surface: surf},
+			},
+		}},
 	}}
 
 	if _, err := geo.AirspaceToGeoJSON(a); err == nil {

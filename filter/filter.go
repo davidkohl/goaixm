@@ -1,24 +1,37 @@
-// Package filter provides predicates for selecting AIXM TimeSlices.
+// Package filter selects and merges AIXM time slices.
+//
+// Every time slice of package aixm implements aixm.TimeSlice, so the
+// functions here work for all features:
+//
+//	slices := filter.Chain(
+//		filter.ByInterpretation(aixm.Baseline),
+//		filter.ByValidTime(now),
+//	).Apply(airspace.TimeSlices())
+//
+//	ts, err := filter.Current(airspace.TimeSlices(), now) // SNAPSHOT or BASELINE+deltas
 package filter
 
 import (
 	"time"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/gml"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/gml"
 )
 
-// TimeSlicePredicate is a function that returns true if a TimeSlice should be included.
-type TimeSlicePredicate func(ts features.TimeSlice) bool
+// Predicate reports whether a time slice should be kept.
+type Predicate func(ts aixm.TimeSlice) bool
 
-// TimeSliceFilter applies a predicate to a slice of TimeSlice values.
-type TimeSliceFilter struct {
-	pred TimeSlicePredicate
+// Filter selects time slices with a predicate.
+type Filter struct {
+	pred Predicate
 }
 
-// Apply returns the subset of slices for which the filter predicate is true.
-func (f TimeSliceFilter) Apply(slices []features.TimeSlice) []features.TimeSlice {
-	out := slices[:0:0]
+// New returns a filter for pred.
+func New(pred Predicate) Filter { return Filter{pred: pred} }
+
+// Apply returns the slices for which the filter's predicate is true, in order.
+func (f Filter) Apply(slices []aixm.TimeSlice) []aixm.TimeSlice {
+	var out []aixm.TimeSlice
 	for _, ts := range slices {
 		if f.pred(ts) {
 			out = append(out, ts)
@@ -27,51 +40,20 @@ func (f TimeSliceFilter) Apply(slices []features.TimeSlice) []features.TimeSlice
 	return out
 }
 
-// ByInterpretation returns a filter that accepts only timeslices with the given interpretation.
-func ByInterpretation(i features.Interpretation) TimeSliceFilter {
-	return TimeSliceFilter{func(ts features.TimeSlice) bool {
-		return ts.GetInterpretation() == i
-	}}
+// ByInterpretation keeps time slices with the given interpretation.
+func ByInterpretation(i aixm.Interpretation) Filter {
+	return Filter{func(ts aixm.TimeSlice) bool { return ts.Common().Interpretation == i }}
 }
 
-// ByValidTime returns a filter that accepts timeslices whose validTime period contains t.
-// A timeslice with no validTime is always included.
-func ByValidTime(t time.Time) TimeSliceFilter {
-	return TimeSliceFilter{func(ts features.TimeSlice) bool {
-		vt := ts.GetValidTime()
-		return timePeriodContains(vt, t)
-	}}
+// ByValidTime keeps time slices whose validTime contains t.  A time slice
+// without a validTime period is always kept.
+func ByValidTime(t time.Time) Filter {
+	return Filter{func(ts aixm.TimeSlice) bool { return periodContains(ts.Common().ValidTime, t) }}
 }
 
-// Latest returns a filter that — after applying — leaves only the single timeslice
-// with the highest (sequenceNumber, correctionNumber) pair.
-// If multiple slices tie on both numbers, the first one wins.
-func Latest() TimeSliceFilter {
-	return TimeSliceFilter{func(_ features.TimeSlice) bool { return true }}
-	// NOTE: Latest is handled by ApplyLatest to allow stateful selection.
-}
-
-// ApplyLatest returns a slice containing only the most recent timeslice.
-func ApplyLatest(slices []features.TimeSlice) []features.TimeSlice {
-	if len(slices) == 0 {
-		return nil
-	}
-	best := slices[0]
-	for _, ts := range slices[1:] {
-		bs := best.GetSequenceNumber()
-		bc := best.GetCorrectionNumber()
-		cs := ts.GetSequenceNumber()
-		cc := ts.GetCorrectionNumber()
-		if cs > bs || (cs == bs && cc > bc) {
-			best = ts
-		}
-	}
-	return []features.TimeSlice{best}
-}
-
-// Chain combines multiple filters with AND semantics.
-func Chain(filters ...TimeSliceFilter) TimeSliceFilter {
-	return TimeSliceFilter{func(ts features.TimeSlice) bool {
+// Chain combines filters with AND semantics.
+func Chain(filters ...Filter) Filter {
+	return Filter{func(ts aixm.TimeSlice) bool {
 		for _, f := range filters {
 			if !f.pred(ts) {
 				return false
@@ -81,18 +63,31 @@ func Chain(filters ...TimeSliceFilter) TimeSliceFilter {
 	}}
 }
 
-// ---- Helpers ---------------------------------------------------------------
+// Latest returns the time slice with the highest (sequenceNumber,
+// correctionNumber), or nil for no slices.  Ties go to the first.
+func Latest(slices []aixm.TimeSlice) aixm.TimeSlice {
+	var best aixm.TimeSlice
+	for _, ts := range slices {
+		if best == nil || newer(ts, best) {
+			best = ts
+		}
+	}
+	return best
+}
 
-func timePeriodContains(tp gml.TimePrimitivePropertyType, t time.Time) bool {
+func newer(a, b aixm.TimeSlice) bool {
+	as, ac := a.Common().Sequence()
+	bs, bc := b.Common().Sequence()
+	return as > bs || (as == bs && ac > bc)
+}
+
+func periodContains(tp gml.TimePrimitiveProperty, t time.Time) bool {
 	period := tp.TimePeriod
 	if period == nil {
-		return true // no constraint
+		return true
 	}
 	begin := parseTimePosition(period.BeginPosition)
 	end := parseTimePosition(period.EndPosition)
-	if begin.IsZero() && end.IsZero() {
-		return true
-	}
 	if !begin.IsZero() && t.Before(begin) {
 		return false
 	}
@@ -102,15 +97,11 @@ func timePeriodContains(tp gml.TimePrimitivePropertyType, t time.Time) bool {
 	return true
 }
 
-func parseTimePosition(pos *gml.TimePositionType) time.Time {
+func parseTimePosition(pos *gml.TimePosition) time.Time {
 	if pos == nil || pos.Value == "" {
 		return time.Time{}
 	}
-	for _, layout := range []string{
-		time.RFC3339,
-		"2006-01-02T15:04:05",
-		"2006-01-02",
-	} {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02"} {
 		if t, err := time.Parse(layout, pos.Value); err == nil {
 			return t
 		}

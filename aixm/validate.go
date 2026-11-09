@@ -1,4 +1,4 @@
-package features
+package aixm
 
 import "fmt"
 
@@ -16,12 +16,12 @@ func (e ValidationError) Error() string {
 	return fmt.Sprintf("validation: [%s]: %s", e.Field, e.Message)
 }
 
-// Validate returns all data-quality violations found in f.
+// Validate returns the data-quality violations found in f.
 // An empty slice means the feature is valid.
 func Validate(f Feature) []ValidationError {
 	var errs []ValidationError
 
-	if f.GetIdentifier() == "" {
+	if f.Common().UUID() == "" {
 		errs = append(errs, ValidationError{
 			Field:   "identifier",
 			Message: "missing GML identifier (UUID)",
@@ -30,22 +30,22 @@ func Validate(f Feature) []ValidationError {
 
 	// Dispatch to per-type validators.
 	switch v := f.(type) {
-	case *AirspaceType:
+	case *Airspace:
 		errs = append(errs, validateAirspace(v)...)
-	case *AirportHeliportType:
+	case *AirportHeliport:
 		errs = append(errs, validateAirportHeliport(v)...)
-	case *RunwayType:
+	case *Runway:
 		errs = append(errs, validateRunway(v)...)
-	case *NavaidType:
+	case *Navaid:
 		errs = append(errs, validateNavaid(v)...)
-	case *DesignatedPointType:
+	case *DesignatedPoint:
 		errs = append(errs, validateDesignatedPoint(v)...)
-	case *RouteSegmentType:
+	case *RouteSegment:
 		errs = append(errs, validateRouteSegment(v)...)
 	}
 
 	// Stamp each error with the feature ID.
-	id := f.GetIdentifier()
+	id := f.Common().UUID()
 	for i := range errs {
 		if errs[i].FeatureID == "" {
 			errs[i].FeatureID = id
@@ -56,16 +56,15 @@ func Validate(f Feature) []ValidationError {
 
 // ---- Per-type validators ---------------------------------------------------
 
-func validateAirspace(a *AirspaceType) []ValidationError {
+func validateAirspace(a *Airspace) []ValidationError {
 	var errs []ValidationError
 	if len(a.TimeSlice) == 0 {
 		errs = append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 		return errs
 	}
 	hasBaseline := false
-	for _, tsp := range a.TimeSlice {
-		ts := tsp.AirspaceTimeSlice
-		if ts.Interpretation == string(InterpretationBaseline) {
+	for _, ts := range a.TimeSlice {
+		if ts.Interpretation == Baseline {
 			hasBaseline = true
 		}
 		if ts.Designator == nil || ts.Designator.Value == "" {
@@ -84,15 +83,14 @@ func validateAirspace(a *AirspaceType) []ValidationError {
 	return errs
 }
 
-func validateAirportHeliport(a *AirportHeliportType) []ValidationError {
+func validateAirportHeliport(a *AirportHeliport) []ValidationError {
 	var errs []ValidationError
 	if len(a.TimeSlice) == 0 {
 		return append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 	}
 	hasBaseline := false
-	for _, tsp := range a.TimeSlice {
-		ts := tsp.AirportHeliportTimeSlice
-		if ts.Interpretation == string(InterpretationBaseline) {
+	for _, ts := range a.TimeSlice {
+		if ts.Interpretation == Baseline {
 			hasBaseline = true
 		}
 		if ts.Designator == nil || ts.Designator.Value == "" {
@@ -105,13 +103,12 @@ func validateAirportHeliport(a *AirportHeliportType) []ValidationError {
 	return errs
 }
 
-func validateRunway(r *RunwayType) []ValidationError {
+func validateRunway(r *Runway) []ValidationError {
 	var errs []ValidationError
 	if len(r.TimeSlice) == 0 {
 		return append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 	}
-	for _, tsp := range r.TimeSlice {
-		ts := tsp.RunwayTimeSlice
+	for _, ts := range r.TimeSlice {
 		if ts.Designator == nil || ts.Designator.Value == "" {
 			errs = append(errs, ValidationError{Field: "designator", Message: "missing runway designator"})
 		}
@@ -119,13 +116,12 @@ func validateRunway(r *RunwayType) []ValidationError {
 	return errs
 }
 
-func validateNavaid(n *NavaidType) []ValidationError {
+func validateNavaid(n *Navaid) []ValidationError {
 	var errs []ValidationError
 	if len(n.TimeSlice) == 0 {
 		return append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 	}
-	for _, tsp := range n.TimeSlice {
-		ts := tsp.NavaidTimeSlice
+	for _, ts := range n.TimeSlice {
 		if ts.Designator == nil || ts.Designator.Value == "" {
 			errs = append(errs, ValidationError{Field: "designator", Message: "missing navaid designator"})
 		}
@@ -136,13 +132,12 @@ func validateNavaid(n *NavaidType) []ValidationError {
 	return errs
 }
 
-func validateDesignatedPoint(dp *DesignatedPointType) []ValidationError {
+func validateDesignatedPoint(dp *DesignatedPoint) []ValidationError {
 	var errs []ValidationError
 	if len(dp.TimeSlice) == 0 {
 		return append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 	}
-	for _, tsp := range dp.TimeSlice {
-		ts := tsp.DesignatedPointTimeSlice
+	for _, ts := range dp.TimeSlice {
 		if ts.Designator == nil || ts.Designator.Value == "" {
 			errs = append(errs, ValidationError{Field: "designator", Message: "missing designator"})
 		}
@@ -150,13 +145,12 @@ func validateDesignatedPoint(dp *DesignatedPointType) []ValidationError {
 	return errs
 }
 
-func validateRouteSegment(rs *RouteSegmentType) []ValidationError {
+func validateRouteSegment(rs *RouteSegment) []ValidationError {
 	var errs []ValidationError
 	if len(rs.TimeSlice) == 0 {
 		return append(errs, ValidationError{Field: "timeSlice", Message: "no timeslices"})
 	}
-	for _, tsp := range rs.TimeSlice {
-		ts := tsp.RouteSegmentTimeSlice
+	for _, ts := range rs.TimeSlice {
 		if ts.Start == nil {
 			errs = append(errs, ValidationError{Field: "start", Message: "missing start point"})
 		}

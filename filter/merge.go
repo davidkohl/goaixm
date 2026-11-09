@@ -1,21 +1,27 @@
 package filter
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
 	"time"
 
-	"gitlab.com/davidkohl/goaixm/features"
+	"github.com/davidkohl/goaixm/aixm"
 )
 
-// EffectiveState holds the merged result of BASELINE + applicable deltas at a
-// point in time.  The concrete timeslice value is stored in Slice and can be
-// type-asserted to the feature-specific *XxxTimeSliceType.
-type EffectiveState struct {
-	// Slice is the merged timeslice.  It is a pointer to a concrete
-	// *XxxTimeSliceType value (e.g. *features.AirspaceTimeSliceType).
-	Slice features.TimeSlice
+// ErrNoBaseline is returned when no BASELINE time slice is valid at the
+// requested time.
+var ErrNoBaseline = errors.New("filter: no BASELINE time slice valid at the requested time")
+
+// Current returns the state of a feature at t: the latest SNAPSHOT valid at
+// t when there is one, otherwise the BASELINE merged with its deltas (see
+// EffectiveAt).
+func Current(slices []aixm.TimeSlice, t time.Time) (aixm.TimeSlice, error) {
+	if snap := Latest(Chain(ByInterpretation(aixm.Snapshot), ByValidTime(t)).Apply(slices)); snap != nil {
+		return snap, nil
+	}
+	return EffectiveAt(slices, t)
 }
 
 // EffectiveAt computes the effective state of a feature's timeslices at time t.
@@ -31,23 +37,25 @@ type EffectiveState struct {
 //     pointer field in the delta overrides the corresponding field in the
 //     running merged value; nil pointer fields are left unchanged (inherited).
 //
-// Returns an error if no BASELINE valid at t exists.
-func EffectiveAt(slices []features.TimeSlice, t time.Time) (*EffectiveState, error) {
+// The result is a new value of the concrete time slice type (e.g.
+// *aixm.AirspaceTimeSlice); the inputs are not modified.  The temporal
+// properties (TimeSliceCommon) are those of the baseline.  ErrNoBaseline is
+// returned when no BASELINE is valid at t.
+func EffectiveAt(slices []aixm.TimeSlice, t time.Time) (aixm.TimeSlice, error) {
 	validAt := ByValidTime(t)
 
 	// Step 1 — find best baseline.
-	baselines := Chain(ByInterpretation(features.InterpretationBaseline), validAt).Apply(slices)
-	if len(baselines) == 0 {
-		return nil, fmt.Errorf("filter: no BASELINE timeslice valid at %v", t)
+	baseline := Latest(Chain(ByInterpretation(aixm.Baseline), validAt).Apply(slices))
+	if baseline == nil {
+		return nil, fmt.Errorf("%w (%v)", ErrNoBaseline, t)
 	}
-	baseline := ApplyLatest(baselines)[0]
 
 	// Step 2 — collect PERMDELTA.
-	permdeltas := Chain(ByInterpretation(features.InterpretationPermDelta), validAt).Apply(slices)
+	permdeltas := Chain(ByInterpretation(aixm.PermDelta), validAt).Apply(slices)
 	sortByVersion(permdeltas)
 
 	// Step 3 — collect TEMPDELTA.
-	tempdeltas := Chain(ByInterpretation(features.InterpretationTempDelta), validAt).Apply(slices)
+	tempdeltas := Chain(ByInterpretation(aixm.TempDelta), validAt).Apply(slices)
 	sortByVersion(tempdeltas)
 
 	// Step 4 — deep-copy baseline, then apply deltas.
@@ -59,14 +67,14 @@ func EffectiveAt(slices []features.TimeSlice, t time.Time) (*EffectiveState, err
 		applyDelta(merged, delta)
 	}
 
-	return &EffectiveState{Slice: merged}, nil
+	return merged, nil
 }
 
 // sortByVersion sorts timeslices ascending by (sequenceNumber, correctionNumber).
-func sortByVersion(slices []features.TimeSlice) {
+func sortByVersion(slices []aixm.TimeSlice) {
 	sort.SliceStable(slices, func(i, j int) bool {
-		si, ci := slices[i].GetSequenceNumber(), slices[i].GetCorrectionNumber()
-		sj, cj := slices[j].GetSequenceNumber(), slices[j].GetCorrectionNumber()
+		si, ci := slices[i].Common().Sequence()
+		sj, cj := slices[j].Common().Sequence()
 		if si != sj {
 			return si < sj
 		}
@@ -74,21 +82,21 @@ func sortByVersion(slices []features.TimeSlice) {
 	})
 }
 
-// deepCopyTimeSlice returns a deep copy of ts as a features.TimeSlice.
+// deepCopyTimeSlice returns a deep copy of ts.
 // ts must be a pointer to a struct.
-func deepCopyTimeSlice(ts features.TimeSlice) features.TimeSlice {
+func deepCopyTimeSlice(ts aixm.TimeSlice) aixm.TimeSlice {
 	v := reflect.ValueOf(ts)
 	if v.Kind() != reflect.Pointer || v.IsNil() {
 		return ts
 	}
 	copy := reflect.New(v.Elem().Type())
 	copyStructDeep(copy.Elem(), v.Elem())
-	return copy.Interface().(features.TimeSlice)
+	return copy.Interface().(aixm.TimeSlice)
 }
 
 // applyDelta overlays non-nil pointer fields from delta onto dst.
-// Both dst and delta must be the same concrete *XxxTimeSliceType.
-func applyDelta(dst features.TimeSlice, delta features.TimeSlice) {
+// Both must be the same concrete time slice type.
+func applyDelta(dst aixm.TimeSlice, delta aixm.TimeSlice) {
 	dstVal := reflect.ValueOf(dst)
 	deltaVal := reflect.ValueOf(delta)
 	if dstVal.Kind() != reflect.Pointer || deltaVal.Kind() != reflect.Pointer {
@@ -102,8 +110,9 @@ func applyDelta(dst features.TimeSlice, delta features.TimeSlice) {
 	overlayStruct(dstElem, deltaElem)
 }
 
-// overlayStruct copies non-nil pointer fields and non-zero slice fields from
-// src onto dst recursively.
+// overlayStruct copies non-nil pointer fields, non-empty slice fields and
+// non-empty strings from src onto dst.  Embedded structs (the temporal
+// TimeSliceCommon) are not overlaid: the result keeps the baseline's.
 func overlayStruct(dst, src reflect.Value) {
 	t := dst.Type()
 	for i := 0; i < t.NumField(); i++ {

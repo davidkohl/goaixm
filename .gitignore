@@ -1,7 +1,5 @@
-# ISO 19139 schemas — © ISO, redistributability is unclear.
-# Download from https://schemas.opengis.net/iso/19139/20070417/ and place at
-# aixm-5.1.1/iso/ before running go generate ./...
-aixm-5.1.1/iso/
+# ISO 19139 schemas — © ISO, redistributability is unclear (see tools/README.md).
+tools/xsd/aixm-5.1.1/iso/
 
 # Go test artifacts
 *.test
@@ -9,3 +7,6 @@ coverage.out
 
 # Editor
 .DS_Store
+
+# Generator debug output
+*.go.broken
