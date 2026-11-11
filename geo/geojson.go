@@ -134,7 +134,7 @@ func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool) (*Feat
 			continue
 		}
 
-		geom, err := volumeGeometry(vol, res, msg, 0)
+		geom, err := volumeGeometry(vol, res, msg, 0, nil)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -219,9 +219,9 @@ func MarshalGeoJSON(fc *FeatureCollection) ([]byte, error) {
 // volumeGeometry converts one airspace volume to a GeoJSON geometry.  It
 // returns a nil geometry, and no error, when the volume carries no geometry of
 // its own and contributes none by reference.
-func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Message, depth int) (any, error) {
+func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Message, depth int, warn func(string)) (any, error) {
 	if patches := vol.HorizontalProjection.Patches(); patches != nil {
-		rings, err := extractAllRings(patches, res, msg)
+		rings, err := extractAllRings(patches, res, msg, warn)
 		if err != nil {
 			return nil, err
 		}
@@ -310,7 +310,7 @@ func airspaceToGeoJSONDepth(a *aixm.Airspace, msg *goaixm.Message, depth int) (*
 		if agc.TheAirspaceVolume == nil {
 			continue
 		}
-		geom, err := volumeGeometry(agc.TheAirspaceVolume, res, msg, depth)
+		geom, err := volumeGeometry(agc.TheAirspaceVolume, res, msg, depth, nil)
 		if err != nil {
 			continue
 		}

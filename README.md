@@ -139,7 +139,7 @@ geometry use `geo.FromPoint`, `geo.FromElevatedPoint`, `geo.CurveCoords`,
 | `LinearRing`, `GeodesicString`, `LineStringSegment` | Vertices taken as given |
 | `CircleByCenterPoint`, `ArcByCenterPoint` | Discretised geodesically on WGS-84 (Vincenty direct); point count scales with the swept angle |
 | `Arc`, `Circle` (three-point forms) | Centre found planar, then walked geodesically |
-| `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` and trimmed to the neighbouring vertices |
+| `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` and cut where the neighbouring members attach (a neighbouring border: where the two meet), so whole borders are joined end to end and reversed as needed; consecutive references to one border count as one stretch; gaps are reported in `AirspaceComponent.Warnings` |
 | `aixm:Curve` / `aixm:Point` in a GML slot | Accepted wherever they substitute for the GML element |
 | Mixed segments in one curve | Assembled in document order |
 

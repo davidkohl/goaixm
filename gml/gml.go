@@ -165,6 +165,7 @@ type Surface struct {
 type LineStringSegment struct {
 	XMLName       xml.Name            `xml:"http://www.opengis.net/gml/3.2 LineStringSegment"`
 	Interpolation string              `xml:"interpolation,attr,omitempty"`
+	Pos           []DirectPosition    `xml:"http://www.opengis.net/gml/3.2 pos"`
 	PosList       *DirectPositionList `xml:"http://www.opengis.net/gml/3.2 posList"`
 }
 

@@ -60,7 +60,7 @@ func CurveCoords(c *aixm.CurveProperty, msg *goaixm.Message) ([][2]float64, erro
 // SurfaceRings returns the closed, RFC 7946 oriented rings (exterior first,
 // then holes) of the first polygon patch of a surface.
 func SurfaceRings(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][2]float64, error) {
-	return extractAllRings(patches, centreResolverFor(msg), msg)
+	return extractAllRings(patches, centreResolverFor(msg), msg, nil)
 }
 
 // SurfacePolygons returns one polygon (list of rings) per polygon patch.
@@ -72,7 +72,7 @@ func SurfacePolygons(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][][2
 	var out [][][][2]float64
 	for i := range patches.PolygonPatch {
 		single := &gml.SurfacePatches{PolygonPatch: patches.PolygonPatch[i : i+1]}
-		rings, err := extractAllRings(single, res, msg)
+		rings, err := extractAllRings(single, res, msg, nil)
 		if err != nil {
 			return nil, fmt.Errorf("geo: patch %d: %w", i, err)
 		}
@@ -93,6 +93,9 @@ type AirspaceComponent struct {
 	// Geometry is Polygon, MultiPolygon, LineString (corridor centreline)
 	// or nil.
 	Geometry any
+	// Warnings describe problems that make Geometry deviate from the source,
+	// e.g. ring members that do not connect.  The geometry is still usable.
+	Warnings []string
 }
 
 // AirspaceComponents returns the components of the airspace's first time
@@ -113,7 +116,7 @@ func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceCompon
 			Volume:    gc.TheAirspaceVolume,
 		}
 		if c.Volume != nil {
-			g, err := volumeGeometry(c.Volume, res, msg, 0)
+			g, err := volumeGeometry(c.Volume, res, msg, 0, func(w string) { c.Warnings = append(c.Warnings, w) })
 			if err != nil {
 				return nil, err
 			}

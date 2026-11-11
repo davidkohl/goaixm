@@ -16,7 +16,7 @@ import (
 //
 // Rings are closed and oriented per RFC 7946: exteriors counter-clockwise,
 // holes clockwise.
-func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaixm.Message) ([][][2]float64, error) {
+func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaixm.Message, warn func(string)) ([][][2]float64, error) {
 	if patches == nil || len(patches.PolygonPatch) == 0 {
 		return nil, fmt.Errorf("geojson: surface has no patches")
 	}
@@ -25,7 +25,7 @@ func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaix
 		return nil, fmt.Errorf("geojson: patch has no exterior")
 	}
 
-	exterior, err := extractAbstractRingCoords(patch.Exterior, res, msg)
+	exterior, err := extractAbstractRingCoords(patch.Exterior, res, msg, warn)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaix
 
 	rings := [][][2]float64{exterior}
 	for i := range patch.Interior {
-		hole, err := extractAbstractRingCoords(&patch.Interior[i], res, msg)
+		hole, err := extractAbstractRingCoords(&patch.Interior[i], res, msg, prefixWarn(warn, fmt.Sprintf("interior ring %d: ", i)))
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
 		}
@@ -97,12 +97,12 @@ func orientRing(ring [][2]float64, ccw bool) [][2]float64 {
 	return ring
 }
 
-func extractAbstractRingCoords(r *gml.AbstractRingProperty, res centreResolver, msg *goaixm.Message) ([][2]float64, error) {
+func extractAbstractRingCoords(r *gml.AbstractRingProperty, res centreResolver, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
 	if r.LinearRing != nil {
 		return extractLinearRingCoords(r.LinearRing)
 	}
 	if r.Ring != nil {
-		return extractRingTypeCoords(r.Ring, res, msg)
+		return extractRingTypeCoords(r.Ring, res, msg, warn)
 	}
 	return nil, fmt.Errorf("geojson: exterior has neither LinearRing nor Ring")
 }
@@ -118,8 +118,10 @@ func extractLinearRingCoords(lr *gml.LinearRing) ([][2]float64, error) {
 }
 
 // extractRingTypeCoords walks the curve members of a ring in document order,
-// resolving referenced border curves against msg where necessary.
-func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Message) ([][2]float64, error) {
+// resolving referenced border curves against msg where necessary, and joins
+// them end to end.  Problems that leave the ring open or distorted are
+// reported through warn (which may be nil); the ring is still returned.
+func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
 	// Resolve each member first.  A referenced border contributes only the
 	// stretch lying between its neighbours, so the neighbouring members have
 	// to be known before it can be trimmed.
@@ -142,7 +144,13 @@ func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Messa
 			if err != nil {
 				return nil, err
 			}
-			members = append(members, ringMember{borderCoords, true})
+			// Consecutive references to the same border describe one
+			// continuous stretch of it (sources may split it into several
+			// sections); it is trimmed once, as a whole.
+			if k := len(members) - 1; k >= 0 && members[k].isBorder && members[k].href == cm.Href {
+				continue
+			}
+			members = append(members, ringMember{borderCoords, true, cm.Href})
 			continue
 		}
 
@@ -150,31 +158,13 @@ func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Messa
 		if err != nil {
 			return nil, err
 		}
-		members = append(members, ringMember{c, false})
+		if len(c) > 0 {
+			members = append(members, ringMember{coords: c})
+		}
 	}
 
-	// Trim each border to the span between the point its predecessor ended on
-	// and the point its successor begins at.  A GeoBorder is a whole national
-	// boundary; a ring borrows only the piece it shares.
-	for i := range members {
-		if !members[i].isBorder || len(members[i].coords) == 0 {
-			continue
-		}
-		var from, to *[2]float64
-		if p := previousEnd(members, i); p != nil {
-			from = p
-		}
-		if n := nextStart(members, i); n != nil {
-			to = n
-		}
-		members[i].coords = trimBorder(members[i].coords, from, to)
-	}
-
-	var coords [][2]float64
-	for _, m := range members {
-		coords = appendDedup(coords, m.coords)
-	}
-
+	trimBorders(members)
+	coords := joinMembers(members, warn)
 	if len(coords) == 0 {
 		return nil, fmt.Errorf("geojson: Ring has no coordinates")
 	}
@@ -186,74 +176,203 @@ func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Messa
 type ringMember struct {
 	coords   [][2]float64
 	isBorder bool
+	href     string
 }
 
-// previousEnd returns the position at which the nearest preceding non-border
-// member ends, wrapping around the ring.  Borders are skipped because an
-// untrimmed one has no meaningful endpoint yet.
-func previousEnd(members []ringMember, i int) *[2]float64 {
-	for k := 1; k < len(members); k++ {
-		j := ((i-k)%len(members) + len(members)) % len(members)
-		m := members[j]
-		if m.isBorder || len(m.coords) == 0 {
+// trimBorders reduces each referenced border to the stretch the ring
+// borrows, oriented in the ring's direction of travel.
+//
+// A GeoBorder is published as a complete national boundary, while a ring may
+// use only part of it.  The ring itself says which part: the border runs from
+// where the previous member ends to where the next member begins.  When a
+// neighbour is itself a referenced border, the two borders meet at a common
+// point (typically a tripoint shared by their endpoints), which is where one
+// hands over to the other.  A border whose neighbours sit on its endpoints is
+// therefore used whole, reversed if the ring travels against it.
+//
+// The borders are trimmed against their untrimmed neighbours, so the result
+// does not depend on the order in which members are processed.
+func trimBorders(members []ringMember) {
+	n := len(members)
+	if n < 2 {
+		return
+	}
+	trimmed := make([][][2]float64, n)
+	for i := range members {
+		m := members[i]
+		if !m.isBorder || len(m.coords) < 2 {
+			trimmed[i] = m.coords
 			continue
 		}
-		p := m.coords[len(m.coords)-1]
-		return &p
+		prev, next := members[(i-1+n)%n], members[(i+1)%n]
+		from := attach(m.coords, prev, false)
+		to := attach(m.coords, next, true)
+		trimmed[i] = cutBorder(m.coords, from, to)
 	}
-	return nil
+	for i := range members {
+		members[i].coords = trimmed[i]
+	}
 }
 
-// nextStart returns the position at which the nearest following non-border
-// member begins, wrapping around the ring.
-func nextStart(members []ringMember, i int) *[2]float64 {
-	for k := 1; k < len(members); k++ {
-		j := (i + k) % len(members)
-		m := members[j]
-		if m.isBorder || len(m.coords) == 0 {
+// borderCut is a position on a border polyline: the parameter s = i + t lies
+// on the segment from vertex i to vertex i+1, and p is the position itself.
+type borderCut struct {
+	s float64
+	p [2]float64
+}
+
+// attach returns where the neighbouring member nb attaches to border: the
+// end of a preceding curve or the start of a following one, projected onto
+// the border, or, for a neighbouring border, the point where the two meet.
+func attach(border [][2]float64, nb ringMember, following bool) borderCut {
+	if len(nb.coords) == 0 {
+		if following {
+			return borderCut{float64(len(border) - 1), border[len(border)-1]}
+		}
+		return borderCut{0, border[0]}
+	}
+	if !nb.isBorder {
+		p := nb.coords[len(nb.coords)-1]
+		if following {
+			p = nb.coords[0]
+		}
+		// The neighbour's own position is kept, so that the join is exact;
+		// only its place along the border is needed.
+		return borderCut{project(border, p), p}
+	}
+	j := junctionIndex(border, nb.coords)
+	return borderCut{float64(j), border[j]}
+}
+
+// junctionIndex returns the index of the position of border b at which it
+// meets border other.  Borders meet where an endpoint of one lies on the
+// other; endpoint-to-endpoint junctions are preferred on ties.
+func junctionIndex(b, other [][2]float64) int {
+	best, bestD := 0, math.Inf(1)
+	for _, e := range []int{0, len(b) - 1} {
+		j := nearestIndex(other, b[e])
+		if d := dist2(b[e], other[j]); d < bestD {
+			best, bestD = e, d
+		}
+	}
+	for _, p := range [][2]float64{other[0], other[len(other)-1]} {
+		j := nearestIndex(b, p)
+		if d := dist2(b[j], p); d < bestD {
+			best, bestD = j, d
+		}
+	}
+	return best
+}
+
+// project returns the parameter s = i + t of the point of the border
+// polyline nearest to p.
+func project(border [][2]float64, p [2]float64) float64 {
+	best, bestD := 0.0, math.Inf(1)
+	// Scale longitude so that distances are roughly isotropic.
+	k := math.Cos(p[1] * math.Pi / 180)
+	for i := 0; i+1 < len(border); i++ {
+		a, b := border[i], border[i+1]
+		ax, ay := (a[0]-p[0])*k, a[1]-p[1]
+		bx, by := (b[0]-p[0])*k, b[1]-p[1]
+		dx, dy := bx-ax, by-ay
+		t := 0.0
+		if l := dx*dx + dy*dy; l > 0 {
+			t = math.Max(0, math.Min(1, -(ax*dx+ay*dy)/l))
+		}
+		x, y := ax+t*dx, ay+t*dy
+		if d := x*x + y*y; d < bestD {
+			best, bestD = float64(i)+t, d
+		}
+	}
+	return best
+}
+
+// cutBorder returns the stretch of border from one cut to the other: the
+// cut positions and the border vertices strictly between them, reversed when
+// the ring travels against the border's own direction.
+func cutBorder(border [][2]float64, from, to borderCut) [][2]float64 {
+	out := [][2]float64{from.p}
+	if from.s <= to.s {
+		for k := int(math.Floor(from.s)) + 1; float64(k) < to.s; k++ {
+			out = appendDedup(out, border[k:k+1])
+		}
+	} else {
+		for k := int(math.Ceil(from.s)) - 1; float64(k) > to.s; k-- {
+			out = appendDedup(out, border[k:k+1])
+		}
+	}
+	return appendDedup(out, [][2]float64{to.p})
+}
+
+// joinMembers concatenates the members end to end.  A member that, after the
+// previous one, connects by its end rather than its start is reversed.  Joins
+// wider than maxJoinGap, and a ring that does not close, are reported through
+// warn: the gap is bridged by a straight line, which may cut across the area
+// the source describes.
+func joinMembers(members []ringMember, warn func(string)) [][2]float64 {
+	var coords [][2]float64
+	for k, m := range members {
+		c := m.coords
+		if len(c) == 0 {
 			continue
 		}
-		p := m.coords[0]
-		return &p
+		if len(coords) > 0 {
+			last := coords[len(coords)-1]
+			dStart, dEnd := distMetres(last, c[0]), distMetres(last, c[len(c)-1])
+			if len(c) > 1 && dStart > maxJoinGap && dEnd <= maxJoinGap {
+				c = reversed(c)
+				dStart = dEnd
+			}
+			if dStart > maxJoinGap && warn != nil {
+				warn(fmt.Sprintf("ring member %d%s does not connect to the previous member: gap of %.0f m between (%.6f, %.6f) and (%.6f, %.6f)",
+					k+1, hrefNote(m), dStart, last[1], last[0], c[0][1], c[0][0]))
+			}
+		}
+		coords = appendDedup(coords, c)
 	}
-	return nil
+	if len(coords) > 1 && warn != nil {
+		if d := distMetres(coords[len(coords)-1], coords[0]); d > maxJoinGap {
+			warn(fmt.Sprintf("ring does not close: gap of %.0f m between its last (%.6f, %.6f) and first (%.6f, %.6f) position",
+				d, coords[len(coords)-1][1], coords[len(coords)-1][0], coords[0][1], coords[0][0]))
+		}
+	}
+	return coords
 }
 
-// trimBorder reduces a whole GeoBorder to the stretch a ring actually borrows.
-//
-// A GeoBorder is published as a complete national boundary, often thousands of
-// positions long, while the ring referencing it uses only the piece between the
-// point its previous member ended on and the point its next member starts at.
-// Splicing in the whole border would inflate the polygon to the size of the
-// country.
-//
-// The nearest border position to each neighbour is found and the border is cut
-// between them, in whichever direction matches the ring's travel.
-func trimBorder(border [][2]float64, from, to *[2]float64) [][2]float64 {
-	if len(border) < 2 || (from == nil && to == nil) {
-		return border
+func hrefNote(m ringMember) string {
+	if m.href == "" {
+		return ""
 	}
+	return " (border " + m.href + ")"
+}
 
-	start, end := 0, len(border)-1
-	if from != nil {
-		start = nearestIndex(border, *from)
-	}
-	if to != nil {
-		end = nearestIndex(border, *to)
-	}
-	if start == end {
-		return border[start : start+1]
-	}
-
-	if start < end {
-		return border[start : end+1]
-	}
-	// The ring runs against the border's own direction.
-	out := make([][2]float64, 0, start-end+1)
-	for i := start; i >= end; i-- {
-		out = append(out, border[i])
+func reversed(c [][2]float64) [][2]float64 {
+	out := make([][2]float64, len(c))
+	for i := range c {
+		out[len(c)-1-i] = c[i]
 	}
 	return out
+}
+
+// maxJoinGap is the distance, in metres, beyond which two ring members that
+// should meet are reported as not connecting.  Borders are trimmed at their
+// position nearest to the neighbouring curve's endpoint, which need not be a
+// border vertex, so small gaps are normal.
+const maxJoinGap = 1000.0
+
+// distMetres is the approximate ground distance between two lon/lat positions
+// (equirectangular; adequate for distances of a few kilometres).
+func distMetres(a, b [2]float64) float64 {
+	const r = 6371008.8
+	lat := (a[1] + b[1]) / 2 * math.Pi / 180
+	dx := (b[0] - a[0]) * math.Pi / 180 * math.Cos(lat)
+	dy := (b[1] - a[1]) * math.Pi / 180
+	return r * math.Hypot(dx, dy)
+}
+
+func dist2(a, b [2]float64) float64 {
+	dx, dy := a[0]-b[0], a[1]-b[1]
+	return dx*dx + dy*dy
 }
 
 // nearestIndex returns the index of the border position closest to p.
@@ -262,8 +381,7 @@ func nearestIndex(border [][2]float64, p [2]float64) int {
 	for i, c := range border {
 		// Planar in lon/lat: adequate for picking the nearest of a dense set
 		// of boundary positions.
-		dx, dy := c[0]-p[0], c[1]-p[1]
-		if d := dx*dx + dy*dy; d < bestD {
+		if d := dist2(c, p); d < bestD {
 			best, bestD = i, d
 		}
 	}
@@ -314,6 +432,8 @@ func segmentsToCoords(segs *gml.CurveSegments, res centreResolver, msg *goaixm.M
 		case seg.LineStringSegment != nil:
 			if seg.LineStringSegment.PosList != nil {
 				c, err = posListToCoords(seg.LineStringSegment.PosList.Value)
+			} else if len(seg.LineStringSegment.Pos) > 0 {
+				c, err = posSliceToCoords(seg.LineStringSegment.Pos)
 			}
 		case seg.Arc != nil:
 			c, err = discretizeArc(seg.Arc.Pos, seg.Arc.PosList, DefaultArcPoints)
@@ -348,4 +468,12 @@ func appendDedup(dst, src [][2]float64) [][2]float64 {
 // samePoint reports whether two positions coincide to within joinTolerance.
 func samePoint(a, b [2]float64) bool {
 	return math.Abs(a[0]-b[0]) <= joinTolerance && math.Abs(a[1]-b[1]) <= joinTolerance
+}
+
+// prefixWarn returns warn with every message prefixed, or nil for nil.
+func prefixWarn(warn func(string), prefix string) func(string) {
+	if warn == nil {
+		return nil
+	}
+	return func(s string) { warn(prefix + s) }
 }
