@@ -96,6 +96,12 @@ type AirspaceComponent struct {
 	// Warnings describe problems that make Geometry deviate from the source,
 	// e.g. ring members that do not connect.  The geometry is still usable.
 	Warnings []string
+	// Unresolved lists the contributor airspaces (contributorAirspace /
+	// theAirspace) the message does not contain: their geometry is missing
+	// from Geometry, so the component is incomplete.  The references keep
+	// href and xlink title as delivered.  Empty when msg is nil (nothing
+	// can be resolved then, and nothing is reported).
+	Unresolved []aixm.Reference
 }
 
 // AirspaceComponents returns the components of the airspace's first time
@@ -121,8 +127,30 @@ func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceCompon
 				return nil, err
 			}
 			c.Geometry = g
+			if ref := unresolvedContributor(c.Volume, msg); ref != nil {
+				c.Unresolved = append(c.Unresolved, *ref)
+			}
 		}
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// unresolvedContributor returns the contributor airspace reference of vol
+// when it contributes horizontal geometry (dependency FULL_GEOMETRY,
+// HORZ_PROJECTION or unspecified) but msg holds no airspace under its href.
+func unresolvedContributor(vol *aixm.AirspaceVolume, msg *goaixm.Message) *aixm.Reference {
+	dep := vol.ContributorAirspace
+	if msg == nil || dep == nil || dep.TheAirspace == nil || dep.TheAirspace.Href == "" {
+		return nil
+	}
+	if d := codeValue(dep.Dependency); d != "" && d != aixm.DependencyFullGeometry && d != aixm.DependencyHorzProjection {
+		return nil
+	}
+	if resolved, ok := msg.Resolve(dep.TheAirspace.Href); ok {
+		if _, ok := resolved.(*aixm.Airspace); ok {
+			return nil
+		}
+	}
+	return dep.TheAirspace
 }
