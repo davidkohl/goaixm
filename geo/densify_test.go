@@ -262,3 +262,36 @@ func TestOptionsDonlon(t *testing.T) {
 	}
 	t.Logf("DONLON airspace ring positions: %d undensified, %d geodesic densified, %d arcs and geodesics densified", before, geod, both)
 }
+
+// A shared edge or arc described in opposite directions by two areas gets
+// identical positions, so that their union leaves no sliver.
+func TestDensifyDirectionIndependent(t *testing.T) {
+	opt := geo.Options{ArcTolerance: 1, GeodesicTolerance: 1}
+	reversedEqual := func(name string, a, b [][2]float64) {
+		t.Helper()
+		if len(a) != len(b) || len(a) < 3 {
+			t.Fatalf("%s: %d and %d positions", name, len(a), len(b))
+		}
+		for i := range a {
+			if a[i] != b[len(b)-1-i] {
+				t.Fatalf("%s: position %d differs: %v vs %v", name, i, a[i], b[len(b)-1-i])
+			}
+		}
+	}
+	p, q := pos(54.0, 6.0), pos(53.7, 9.1)
+	fwd, _ := opt.SegmentCoords(&gml.CurveSegments{GeodesicString: []gml.GeodesicString{{PosList: &gml.DirectPositionList{Value: p + " " + q}}}}, nil)
+	rev, _ := opt.SegmentCoords(&gml.CurveSegments{GeodesicString: []gml.GeodesicString{{PosList: &gml.DirectPositionList{Value: q + " " + p}}}}, nil)
+	reversedEqual("geodesic", fwd, rev)
+
+	arc := func(from, to float64) [][2]float64 {
+		c, err := opt.SegmentCoords(&gml.CurveSegments{ArcByCenterPoint: []gml.ArcByCenterPoint{{
+			Pos: &gml.DirectPosition{Value: pos(50, 8)}, Radius: gml.Measure{Value: 12, UOM: "NM"},
+			StartAngle: &gml.Angle{Value: from}, EndAngle: &gml.Angle{Value: to},
+		}}}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	reversedEqual("arc", arc(10, 50), arc(50, 10))
+}

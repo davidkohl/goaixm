@@ -3,6 +3,7 @@ package geo
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -85,7 +86,18 @@ func discretizeCircleByCenter(c *gml.CircleByCenterPoint, cv *conv) ([][2]float6
 // lon/lat chord — is measured, and n grows until it is within tol: the
 // sagitta estimate of arcPointCount does not include the (small) deviation
 // of a lon/lat chord from the true one.
+//
+// With tol > 0 an arc is computed in the clockwise direction (a negative
+// sweep from its other end, then reversed), so that two curves describing
+// the same arc in opposite directions get identical positions and a union
+// of their areas leaves no sliver along it.  Without, positions are as
+// they always were.
 func arcPositions(lat, lon, radius, start, sweep float64, n int, tol float64) [][2]float64 {
+	if tol > 0 && sweep < 0 {
+		coords := arcPositions(lat, lon, radius, start+sweep, -sweep, n, tol)
+		slices.Reverse(coords)
+		return coords
+	}
 	at := func(bearing float64) [2]float64 {
 		pLat, pLon := DestinationPoint(lat, lon, bearing, radius)
 		return [2]float64{pLon, pLat}

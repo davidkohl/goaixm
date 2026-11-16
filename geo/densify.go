@@ -1,6 +1,9 @@
 package geo
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // wgs84E2 is the first eccentricity squared of WGS-84.
 const wgs84E2 = wgs84F * (2 - wgs84F)
@@ -27,7 +30,17 @@ func densifyGeodesic(coords [][2]float64, tol float64) [][2]float64 {
 // ([lon, lat]): the n−1 points dividing the geodesic a→b into n pieces of
 // equal length, for the smallest n found whose pieces each deviate from
 // their straight lon/lat chord by at most tol metres.
+//
+// The result does not depend on the direction: b→a gives the same positions
+// in reverse order, bit for bit.  Neighbouring areas that share an edge,
+// each in its own direction of travel, so get identical vertices, and a
+// union of the two leaves no sliver along the edge.
 func geodesicInterior(a, b [2]float64, tol float64) [][2]float64 {
+	if b[0] < a[0] || (b[0] == a[0] && b[1] < a[1]) {
+		pts := geodesicInterior(b, a, tol)
+		slices.Reverse(pts)
+		return pts
+	}
 	if math.Abs(a[0]-b[0]) > 180 {
 		return nil // crosses the antimeridian: no straight lon/lat chord
 	}
