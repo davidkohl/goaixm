@@ -13,7 +13,8 @@ import (
 
 // DefaultArcPoints is the number of interpolated points used to approximate a
 // full 360-degree circle.  Arcs spanning less than a full turn use
-// proportionally fewer points, down to a floor of arcMinPoints.
+// proportionally fewer points, down to a floor of arcMinPoints.  Options
+// with an ArcTolerance replace it by a maximum chord error.
 var DefaultArcPoints = 64
 
 // arcMinPoints is the fewest points used for an arc of any sweep, so that very
@@ -81,7 +82,7 @@ func noResolver(string) (float64, float64, bool) { return 0, 0, false }
 // resolved without the surrounding message; use AirspaceToGeoJSONWithRefs for
 // those.
 func AirspaceToGeoJSON(a *aixm.Airspace) (*FeatureCollection, error) {
-	return airspaceToGeoJSON(a, nil, false)
+	return airspaceToGeoJSON(a, nil, false, Options{})
 }
 
 // AirspaceToGeoJSONWithRefs converts an airspace to GeoJSON, resolving
@@ -90,7 +91,7 @@ func AirspaceToGeoJSON(a *aixm.Airspace) (*FeatureCollection, error) {
 // reference.  When more than one polygon results the geometry is a
 // MultiPolygon.
 func AirspaceToGeoJSONWithRefs(a *aixm.Airspace, msg *goaixm.Message) (*FeatureCollection, error) {
-	return airspaceToGeoJSON(a, msg, true)
+	return airspaceToGeoJSON(a, msg, true, Options{})
 }
 
 // airspaceToGeoJSON converts an airspace.  When merge is set, every polygon is
@@ -98,7 +99,7 @@ func AirspaceToGeoJSONWithRefs(a *aixm.Airspace, msg *goaixm.Message) (*FeatureC
 // which is how the reference-resolving form assembles an airspace from its
 // contributing parts.  Otherwise each volume yields its own feature, carrying
 // that volume's vertical limits.
-func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool) (*FeatureCollection, error) {
+func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool, o Options) (*FeatureCollection, error) {
 	if a == nil {
 		return nil, fmt.Errorf("geojson: nil airspace")
 	}
@@ -107,7 +108,7 @@ func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool) (*Feat
 	}
 	ts := a.TimeSlice[0]
 	props := airspaceProps(a, ts)
-	res := centreResolverFor(msg)
+	cv := o.conv(msg)
 
 	components := orderedComponents(ts.GeometryComponent)
 
@@ -134,7 +135,7 @@ func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool) (*Feat
 			continue
 		}
 
-		geom, err := volumeGeometry(vol, res, msg, 0, nil)
+		geom, err := volumeGeometry(vol, cv, msg, 0, nil)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -219,9 +220,9 @@ func MarshalGeoJSON(fc *FeatureCollection) ([]byte, error) {
 // volumeGeometry converts one airspace volume to a GeoJSON geometry.  It
 // returns a nil geometry, and no error, when the volume carries no geometry of
 // its own and contributes none by reference.
-func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Message, depth int, warn func(string)) (any, error) {
+func volumeGeometry(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message, depth int, warn func(string)) (any, error) {
 	if patches := vol.HorizontalProjection.Patches(); patches != nil {
-		rings, err := extractAllRings(patches, res, msg, warn)
+		rings, err := extractAllRings(patches, cv, msg, warn)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +232,7 @@ func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Me
 	// A corridor: a centreline with a width.  The centreline is emitted as a
 	// LineString; see the package documentation on why it is not buffered.
 	if segs := vol.Centreline.Segments(); segs != nil {
-		coords, err := segmentsToCoords(segs, res, msg)
+		coords, err := segmentsToCoords(segs, cv, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +240,7 @@ func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Me
 	}
 
 	if vol.ContributorAirspace != nil {
-		polys, err := resolveContributors(vol, msg, depth)
+		polys, err := resolveContributors(vol, cv, msg, depth)
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +259,7 @@ func volumeGeometry(vol *aixm.AirspaceVolume, res centreResolver, msg *goaixm.Me
 
 // resolveContributors returns the polygons contributed to vol by the airspace
 // its contributorAirspace dependency names.
-func resolveContributors(vol *aixm.AirspaceVolume, msg *goaixm.Message, depth int) ([][][][2]float64, error) {
+func resolveContributors(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message, depth int) ([][][][2]float64, error) {
 	if depth >= maxContributorDepth {
 		return nil, fmt.Errorf("geojson: contributor airspace nesting exceeds %d levels", maxContributorDepth)
 	}
@@ -287,7 +288,7 @@ func resolveContributors(vol *aixm.AirspaceVolume, msg *goaixm.Message, depth in
 		return nil, nil
 	}
 
-	fc, err := airspaceToGeoJSONDepth(sub, msg, depth+1)
+	fc, err := airspaceToGeoJSONDepth(sub, cv, msg, depth+1)
 	if err != nil {
 		// A contributor we cannot convert simply contributes nothing; the
 		// airspace may still have geometry from its other components.
@@ -298,19 +299,18 @@ func resolveContributors(vol *aixm.AirspaceVolume, msg *goaixm.Message, depth in
 
 // airspaceToGeoJSONDepth converts a contributed airspace while tracking the
 // aggregation depth already reached.
-func airspaceToGeoJSONDepth(a *aixm.Airspace, msg *goaixm.Message, depth int) (*FeatureCollection, error) {
+func airspaceToGeoJSONDepth(a *aixm.Airspace, cv *conv, msg *goaixm.Message, depth int) (*FeatureCollection, error) {
 	if len(a.TimeSlice) == 0 {
 		return nil, fmt.Errorf("geojson: airspace has no timeslices")
 	}
 	ts := a.TimeSlice[0]
-	res := centreResolverFor(msg)
 
 	var polygons [][][][2]float64
 	for _, agc := range orderedComponents(ts.GeometryComponent) {
 		if agc.TheAirspaceVolume == nil {
 			continue
 		}
-		geom, err := volumeGeometry(agc.TheAirspaceVolume, res, msg, depth, nil)
+		geom, err := volumeGeometry(agc.TheAirspaceVolume, cv, msg, depth, nil)
 		if err != nil {
 			continue
 		}

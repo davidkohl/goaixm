@@ -43,36 +43,45 @@ func FromPointProperty(p *aixm.PointProperty) (Coordinate, error) {
 
 // SegmentCoords flattens GML curve segments (LineStringSegment,
 // GeodesicString, Arc, Circle, ArcByCenterPoint, CircleByCenterPoint) into a
-// polyline.  Arcs are discretised with DefaultArcPoints resolution.
+// polyline.  Arcs are discretised with DefaultArcPoints resolution; see
+// Options for densification by tolerance.
 func SegmentCoords(segs *gml.CurveSegments, msg *goaixm.Message) ([][2]float64, error) {
-	return segmentsToCoords(segs, centreResolverFor(msg), msg)
+	return Options{}.SegmentCoords(segs, msg)
 }
 
 // CurveCoords flattens whichever curve form a CurveProperty holds.
 func CurveCoords(c *aixm.CurveProperty, msg *goaixm.Message) ([][2]float64, error) {
+	return curveCoords(c, Options{}, msg)
+}
+
+func curveCoords(c *aixm.CurveProperty, o Options, msg *goaixm.Message) ([][2]float64, error) {
 	segs := c.Segments()
 	if segs == nil {
 		return nil, fmt.Errorf("geo: curve property has no inline curve")
 	}
-	return SegmentCoords(segs, msg)
+	return o.SegmentCoords(segs, msg)
 }
 
 // SurfaceRings returns the closed, RFC 7946 oriented rings (exterior first,
 // then holes) of the first polygon patch of a surface.
 func SurfaceRings(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][2]float64, error) {
-	return extractAllRings(patches, centreResolverFor(msg), msg, nil)
+	return Options{}.SurfaceRings(patches, msg)
 }
 
 // SurfacePolygons returns one polygon (list of rings) per polygon patch.
 func SurfacePolygons(patches *gml.SurfacePatches, msg *goaixm.Message) ([][][][2]float64, error) {
+	return surfacePolygons(patches, Options{}, msg)
+}
+
+func surfacePolygons(patches *gml.SurfacePatches, o Options, msg *goaixm.Message) ([][][][2]float64, error) {
 	if patches == nil || len(patches.PolygonPatch) == 0 {
 		return nil, fmt.Errorf("geo: surface has no patches")
 	}
-	res := centreResolverFor(msg)
+	cv := o.conv(msg)
 	var out [][][][2]float64
 	for i := range patches.PolygonPatch {
 		single := &gml.SurfacePatches{PolygonPatch: patches.PolygonPatch[i : i+1]}
-		rings, err := extractAllRings(single, res, msg, nil)
+		rings, err := extractAllRings(single, cv, msg, nil)
 		if err != nil {
 			return nil, fmt.Errorf("geo: patch %d: %w", i, err)
 		}
@@ -110,10 +119,14 @@ type AirspaceComponent struct {
 // SUBTR components; callers evaluate the operations themselves, e.g. with
 // PostGIS ST_Intersection / ST_Difference.
 func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceComponent, error) {
+	return airspaceComponents(a, Options{}, msg)
+}
+
+func airspaceComponents(a *aixm.Airspace, o Options, msg *goaixm.Message) ([]AirspaceComponent, error) {
 	if a == nil || len(a.TimeSlice) == 0 {
 		return nil, fmt.Errorf("geo: airspace has no time slices")
 	}
-	res := centreResolverFor(msg)
+	cv := o.conv(msg)
 	var out []AirspaceComponent
 	for _, gc := range orderedComponents(a.TimeSlice[0].GeometryComponent) {
 		c := AirspaceComponent{
@@ -122,7 +135,7 @@ func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceCompon
 			Volume:    gc.TheAirspaceVolume,
 		}
 		if c.Volume != nil {
-			g, err := volumeGeometry(c.Volume, res, msg, 0, func(w string) { c.Warnings = append(c.Warnings, w) })
+			g, err := volumeGeometry(c.Volume, cv, msg, 0, func(w string) { c.Warnings = append(c.Warnings, w) })
 			if err != nil {
 				return nil, err
 			}

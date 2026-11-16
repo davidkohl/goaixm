@@ -103,6 +103,19 @@ func DestinationPoint(lat, lon, bearingDeg, distMetres float64) (destLat, destLo
 // that case the great-circle distance on a sphere of mean earth radius is
 // returned instead.
 func GeodesicDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	d, _, ok := geodesicInverse(lat1, lon1, lat2, lon2)
+	if !ok {
+		// Near-antipodal: fall back to a spherical great-circle distance.
+		return haversine(lat1, lon1, lat2, lon2)
+	}
+	return d
+}
+
+// geodesicInverse is the Vincenty inverse solution: the distance in metres
+// and the initial azimuth (degrees clockwise from north) of the geodesic
+// from the first point to the second.  ok is false when the iteration does
+// not converge (near-antipodal points).
+func geodesicInverse(lat1, lon1, lat2, lon2 float64) (dist, azimuth float64, ok bool) {
 	phi1, phi2 := rad(lat1), rad(lat2)
 	l := rad(normaliseLon(lon2 - lon1))
 
@@ -126,7 +139,7 @@ func GeodesicDistance(lat1, lon1, lat2, lon2 float64) float64 {
 			cosU1*sinU2-sinU1*cosU2*cosLambda,
 		)
 		if sinSigma == 0 {
-			return 0 // coincident points
+			return 0, 0, true // coincident points
 		}
 		cosSigma = sinU1*sinU2 + cosU1*cosU2*cosLambda
 		sigma = math.Atan2(sinSigma, cosSigma)
@@ -152,8 +165,7 @@ func GeodesicDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	}
 
 	if !converged {
-		// Near-antipodal: fall back to a spherical great-circle distance.
-		return haversine(lat1, lon1, lat2, lon2)
+		return 0, 0, false
 	}
 
 	uSq := cosSqAlpha * (wgs84A*wgs84A - wgs84B*wgs84B) / (wgs84B * wgs84B)
@@ -164,7 +176,12 @@ func GeodesicDistance(lat1, lon1, lat2, lon2 float64) float64 {
 		(cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)-
 			bCoef/6*cos2SigmaM*(-3+4*sinSigma*sinSigma)*(-3+4*cos2SigmaM*cos2SigmaM)))
 
-	return wgs84B * aCoef * (sigma - deltaSigma)
+	sinLambda, cosLambda := math.Sincos(lambda)
+	az := deg(math.Atan2(cosU2*sinLambda, cosU1*sinU2-sinU1*cosU2*cosLambda))
+	if az < 0 {
+		az += 360
+	}
+	return wgs84B * aCoef * (sigma - deltaSigma), az, true
 }
 
 // haversine returns the great-circle distance in metres on a sphere of mean

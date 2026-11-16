@@ -136,7 +136,7 @@ geometry use `geo.FromPoint`, `geo.FromElevatedPoint`, `geo.CurveCoords`,
 
 | GML construct | Handling |
 |---|---|
-| `LinearRing`, `GeodesicString`, `LineStringSegment` | Vertices taken as given |
+| `LinearRing`, `GeodesicString`, `LineStringSegment` | Vertices taken as given (densified with `geo.Options`, below) |
 | `CircleByCenterPoint`, `ArcByCenterPoint` | Discretised geodesically on WGS-84 (Vincenty direct); point count scales with the swept angle |
 | `Arc`, `Circle` (three-point forms) | Centre found planar, then walked geodesically |
 | `curveMember` with `xlink:href` | Resolved to the referenced `GeoBorder` and cut where the neighbouring members attach (a neighbouring border: where the two meet), so whole borders are joined end to end and reversed as needed; consecutive references to one border count as one stretch; gaps are reported in `AirspaceComponent.Warnings` |
@@ -147,6 +147,27 @@ Radii are converted from their unit of measure (`NM`, `KM`, `M`, `FT`, `MI`,
 `CM` and the UCUM spellings including `[nmi_i]`). An unrecognised unit is an
 error rather than an assumed default. Rings are closed and wound per
 RFC 7946. `geo.DefaultArcPoints` (64) sets the points of a full circle.
+
+By default arcs use a fixed number of points and geodesic segments keep only
+their vertices: at 64 points a 10 NM circle is off by up to 22 m, and a
+200 km east-west `GeodesicString` drawn straight in lon/lat by up to 1 km.
+`geo.Options` densifies by a maximum error instead; every source vertex is
+kept exactly, computed positions are only inserted between them:
+
+```go
+opt := geo.Options{ArcTolerance: 1, GeodesicTolerance: 1} // metres
+comps, err := opt.AirspaceComponents(airspace, msg)
+```
+
+| Option | Applies to | Rule |
+|---|---|---|
+| `ArcTolerance` | `ArcByCenterPoint`, `CircleByCenterPoint`, `Arc`, `Circle` | Equal bearing steps with chord sagitta r·(1 − cos(Δθ/2)) ≤ tolerance, then verified per chord against the straight lon/lat line (more steps if needed); at least 8 per arc |
+| `GeodesicTolerance` | `GeodesicString`, `LineStringSegment interpolation="geodesic"` (also inside `GeoBorder`s) | Each segment split into n equal geodesic pieces (Vincenty direct), n the smallest found with every piece's lon/lat chord within the tolerance at its midpoint; segments crossing the antimeridian are left as they are |
+
+The `Options` methods mirror the package functions (`SegmentCoords`,
+`CurveCoords`, `SurfaceRings`, `SurfacePolygons`, `AirspaceComponents`,
+`AirspaceToGeoJSON`, `AirspaceToGeoJSONWithRefs`); the zero value behaves
+like them.
 
 ## Validation
 

@@ -12,19 +12,35 @@ import (
 // ---- Arc and circle discretization ------------------------------------------
 
 // arcPointCount returns the number of segments used to approximate an arc of
-// the given sweep, scaled so that a full circle uses DefaultArcPoints.
-func arcPointCount(sweepDeg float64) int {
-	n := int(math.Ceil(float64(DefaultArcPoints) * math.Abs(sweepDeg) / 360))
-	if n < arcMinPoints {
-		n = arcMinPoints
+// the given sweep and radius.  Without a tolerance a full circle uses
+// DefaultArcPoints, and shorter sweeps proportionally fewer.  With one, the
+// bearing step Δθ is the largest whose chord sagitta r·(1 − cos(Δθ/2)) stays
+// within tol (see Options.ArcTolerance).  Either way an arc has at least
+// arcMinPoints segments.
+func arcPointCount(sweepDeg, radius, tol float64) int {
+	var n int
+	if tol > 0 && radius > tol {
+		step := 2 * deg(math.Acos(1-tol/radius))
+		n = int(math.Ceil(math.Abs(sweepDeg)/step - 1e-9))
+	} else {
+		n = int(math.Ceil(float64(DefaultArcPoints) * math.Abs(sweepDeg) / 360))
 	}
-	return n
+	return min(max(n, arcMinPoints), maxDensifyPoints)
+}
+
+// circlePointCount is arcPointCount for a full circle, whose count without a
+// tolerance is DefaultArcPoints exactly.
+func circlePointCount(radius, tol float64) int {
+	if tol > 0 && radius > tol {
+		return arcPointCount(360, radius, tol)
+	}
+	return DefaultArcPoints
 }
 
 // discretizeArcByCenter approximates a gml:ArcByCenterPoint as a geodesic
 // polyline running clockwise from its start bearing to its end bearing.
-func discretizeArcByCenter(a *gml.ArcByCenterPoint, res centreResolver) ([][2]float64, error) {
-	lat, lon, err := arcCentre(a.Pos, a.PosList, a.PointProperty, a.PointRep, res)
+func discretizeArcByCenter(a *gml.ArcByCenterPoint, cv *conv) ([][2]float64, error) {
+	lat, lon, err := arcCentre(a.Pos, a.PosList, a.PointProperty, a.PointRep, cv.res)
 	if err != nil {
 		return nil, err
 	}
@@ -42,20 +58,14 @@ func discretizeArcByCenter(a *gml.ArcByCenterPoint, res centreResolver) ([][2]fl
 	}
 	start, sweep := arcSweep(startDeg, endDeg)
 
-	n := arcPointCount(sweep)
-	coords := make([][2]float64, 0, n+1)
-	for i := 0; i <= n; i++ {
-		bearing := start + sweep*float64(i)/float64(n)
-		pLat, pLon := DestinationPoint(lat, lon, bearing, radius)
-		coords = append(coords, [2]float64{pLon, pLat})
-	}
-	return coords, nil
+	n := arcPointCount(sweep, radius, cv.opt.ArcTolerance)
+	return arcPositions(lat, lon, radius, start, sweep, n, cv.opt.ArcTolerance), nil
 }
 
 // discretizeCircleByCenter approximates a gml:CircleByCenterPoint as a closed
 // geodesic ring.  The final position repeats the first exactly.
-func discretizeCircleByCenter(c *gml.CircleByCenterPoint, res centreResolver) ([][2]float64, error) {
-	lat, lon, err := arcCentre(c.Pos, c.PosList, c.PointProperty, c.PointRep, res)
+func discretizeCircleByCenter(c *gml.CircleByCenterPoint, cv *conv) ([][2]float64, error) {
+	lat, lon, err := arcCentre(c.Pos, c.PosList, c.PointProperty, c.PointRep, cv.res)
 	if err != nil {
 		return nil, err
 	}
@@ -64,16 +74,49 @@ func discretizeCircleByCenter(c *gml.CircleByCenterPoint, res centreResolver) ([
 		return nil, fmt.Errorf("geojson: CircleByCenterPoint radius: %w", err)
 	}
 
-	n := DefaultArcPoints
-	coords := make([][2]float64, 0, n+1)
-	for i := 0; i < n; i++ {
-		bearing := 360 * float64(i) / float64(n)
+	n := circlePointCount(radius, cv.opt.ArcTolerance)
+	return circlePositions(lat, lon, radius, 0, n, cv.opt.ArcTolerance), nil
+}
+
+// arcPositions returns n+1 positions ([lon, lat]) at equal bearing steps
+// on the geodesic circle of the given radius around (lat, lon), from start
+// through start+sweep.  With tol > 0 the served error of every chord — the
+// distance between the curve at the step's middle bearing and the straight
+// lon/lat chord — is measured, and n grows until it is within tol: the
+// sagitta estimate of arcPointCount does not include the (small) deviation
+// of a lon/lat chord from the true one.
+func arcPositions(lat, lon, radius, start, sweep float64, n int, tol float64) [][2]float64 {
+	at := func(bearing float64) [2]float64 {
 		pLat, pLon := DestinationPoint(lat, lon, bearing, radius)
-		coords = append(coords, [2]float64{pLon, pLat})
+		return [2]float64{pLon, pLat}
 	}
+	for {
+		coords := make([][2]float64, 0, n+1)
+		for i := 0; i <= n; i++ {
+			coords = append(coords, at(start+sweep*float64(i)/float64(n)))
+		}
+		if tol <= 0 || n >= maxDensifyPoints {
+			return coords
+		}
+		worst := 0.0
+		for i := 0; i < n; i++ {
+			worst = math.Max(worst, chordDeviation(at(start+sweep*(float64(i)+0.5)/float64(n)), coords[i], coords[i+1]))
+		}
+		if worst <= tol {
+			return coords
+		}
+		n = min(int(math.Ceil(float64(n)*math.Sqrt(worst/tol)))+1, maxDensifyPoints)
+	}
+}
+
+// circlePositions is arcPositions for a closed ring of n positions from
+// the start bearing; the final position repeats the first exactly.
+func circlePositions(lat, lon, radius, start float64, n int, tol float64) [][2]float64 {
+	coords := arcPositions(lat, lon, radius, start, 360, n, tol)
 	// Close the ring on the first position rather than recomputing it, so the
 	// coincidence is exact.
-	return append(coords, coords[0]), nil
+	coords[len(coords)-1] = coords[0]
+	return coords
 }
 
 // arcCentre extracts the centre of a by-centre arc from whichever of the four
@@ -130,7 +173,7 @@ func firstLatLon(s string) (lat, lon float64, err error) {
 // The centre and radius are found planar, which is a good approximation at the
 // scale of an airspace boundary; the arc itself is then walked geodesically so
 // that the result is consistent with the by-centre forms.
-func discretizeArc(pos []gml.DirectPosition, posList *gml.DirectPositionList, n int) ([][2]float64, error) {
+func discretizeArc(pos []gml.DirectPosition, posList *gml.DirectPositionList, tol float64) ([][2]float64, error) {
 	pts, err := arcPoints(pos, posList)
 	if err != nil {
 		return nil, err
@@ -163,24 +206,13 @@ func discretizeArc(pos []gml.DirectPosition, posList *gml.DirectPositionList, n 
 
 	radius := GeodesicDistance(cy, cx, lat1, lon1)
 
-	// n is the count for a full turn; scale it to the sweep actually covered.
-	steps := int(math.Ceil(float64(n) * math.Abs(sweep) / 360))
-	if steps < arcMinPoints {
-		steps = arcMinPoints
-	}
-
-	coords := make([][2]float64, 0, steps+1)
-	for i := 0; i <= steps; i++ {
-		bearing := b1 + sweep*float64(i)/float64(steps)
-		pLat, pLon := DestinationPoint(cy, cx, bearing, radius)
-		coords = append(coords, [2]float64{pLon, pLat})
-	}
-	return coords, nil
+	steps := arcPointCount(sweep, radius, tol)
+	return arcPositions(cy, cx, radius, b1, sweep, steps, tol), nil
 }
 
 // discretizeCircle approximates a circle given by three points on its
 // circumference as a closed geodesic ring.
-func discretizeCircle(pos []gml.DirectPosition, posList *gml.DirectPositionList, n int) ([][2]float64, error) {
+func discretizeCircle(pos []gml.DirectPosition, posList *gml.DirectPositionList, tol float64) ([][2]float64, error) {
 	pts, err := arcPoints(pos, posList)
 	if err != nil {
 		return nil, err
@@ -196,13 +228,8 @@ func discretizeCircle(pos []gml.DirectPosition, posList *gml.DirectPositionList,
 	radius := GeodesicDistance(cy, cx, lat1, lon1)
 	start := bearingTo(cy, cx, lat1, lon1)
 
-	coords := make([][2]float64, 0, n+1)
-	for i := 0; i < n; i++ {
-		bearing := start + 360*float64(i)/float64(n)
-		pLat, pLon := DestinationPoint(cy, cx, bearing, radius)
-		coords = append(coords, [2]float64{pLon, pLat})
-	}
-	return append(coords, coords[0]), nil
+	n := circlePointCount(radius, tol)
+	return circlePositions(cy, cx, radius, start, n, tol), nil
 }
 
 // bearingTo returns the initial true bearing, in degrees clockwise from north,

@@ -3,6 +3,7 @@ package geo
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/davidkohl/goaixm"
 	"github.com/davidkohl/goaixm/aixm"
@@ -16,7 +17,7 @@ import (
 //
 // Rings are closed and oriented per RFC 7946: exteriors counter-clockwise,
 // holes clockwise.
-func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaixm.Message, warn func(string)) ([][][2]float64, error) {
+func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message, warn func(string)) ([][][2]float64, error) {
 	if patches == nil || len(patches.PolygonPatch) == 0 {
 		return nil, fmt.Errorf("geojson: surface has no patches")
 	}
@@ -25,7 +26,7 @@ func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaix
 		return nil, fmt.Errorf("geojson: patch has no exterior")
 	}
 
-	exterior, err := extractAbstractRingCoords(patch.Exterior, res, msg, warn)
+	exterior, err := extractAbstractRingCoords(patch.Exterior, cv, msg, warn)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +37,7 @@ func extractAllRings(patches *gml.SurfacePatches, res centreResolver, msg *goaix
 
 	rings := [][][2]float64{exterior}
 	for i := range patch.Interior {
-		hole, err := extractAbstractRingCoords(&patch.Interior[i], res, msg, prefixWarn(warn, fmt.Sprintf("interior ring %d: ", i)))
+		hole, err := extractAbstractRingCoords(&patch.Interior[i], cv, msg, prefixWarn(warn, fmt.Sprintf("interior ring %d: ", i)))
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
 		}
@@ -97,12 +98,12 @@ func orientRing(ring [][2]float64, ccw bool) [][2]float64 {
 	return ring
 }
 
-func extractAbstractRingCoords(r *gml.AbstractRingProperty, res centreResolver, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
+func extractAbstractRingCoords(r *gml.AbstractRingProperty, cv *conv, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
 	if r.LinearRing != nil {
 		return extractLinearRingCoords(r.LinearRing)
 	}
 	if r.Ring != nil {
-		return extractRingTypeCoords(r.Ring, res, msg, warn)
+		return extractRingTypeCoords(r.Ring, cv, msg, warn)
 	}
 	return nil, fmt.Errorf("geojson: exterior has neither LinearRing nor Ring")
 }
@@ -121,7 +122,7 @@ func extractLinearRingCoords(lr *gml.LinearRing) ([][2]float64, error) {
 // resolving referenced border curves against msg where necessary, and joins
 // them end to end.  Problems that leave the ring open or distorted are
 // reported through warn (which may be nil); the ring is still returned.
-func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
+func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn func(string)) ([][2]float64, error) {
 	// Resolve each member first.  A referenced border contributes only the
 	// stretch lying between its neighbours, so the neighbouring members have
 	// to be known before it can be trimmed.
@@ -140,7 +141,7 @@ func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Messa
 					"geojson: ring references border %s, which needs the surrounding message to resolve",
 					cm.Href)
 			}
-			borderCoords, err := resolveBorderCurve(cm.Href, res, msg)
+			borderCoords, err := resolveBorderCurve(cm.Href, cv, msg)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +155,7 @@ func extractRingTypeCoords(ring *gml.Ring, res centreResolver, msg *goaixm.Messa
 			continue
 		}
 
-		c, err := segmentsToCoords(curve.Segments, res, msg)
+		c, err := segmentsToCoords(curve.Segments, cv, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -390,7 +391,7 @@ func nearestIndex(border [][2]float64, p [2]float64) int {
 
 // resolveBorderCurve returns the coordinates of a GeoBorder referenced from a
 // curveMember.
-func resolveBorderCurve(href string, res centreResolver, msg *goaixm.Message) ([][2]float64, error) {
+func resolveBorderCurve(href string, cv *conv, msg *goaixm.Message) ([][2]float64, error) {
 	target, ok := msg.Resolve(href)
 	if !ok {
 		return nil, fmt.Errorf("geojson: cannot resolve referenced border %s", href)
@@ -402,7 +403,7 @@ func resolveBorderCurve(href string, res centreResolver, msg *goaixm.Message) ([
 	}
 	for _, ts := range border.TimeSlice {
 		if segs := ts.Border.Segments(); segs != nil {
-			return segmentsToCoords(segs, res, msg)
+			return segmentsToCoords(segs, cv, msg)
 		}
 	}
 	return nil, fmt.Errorf("geojson: referenced border %s has no curve", href)
@@ -411,7 +412,7 @@ func resolveBorderCurve(href string, res centreResolver, msg *goaixm.Message) ([
 // segmentsToCoords converts a curve's segments, in document order, to a
 // polyline.  Order matters: a boundary that runs out along a radial, around an
 // arc and back would self-intersect if its segments were reordered.
-func segmentsToCoords(segs *gml.CurveSegments, res centreResolver, msg *goaixm.Message) ([][2]float64, error) {
+func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([][2]float64, error) {
 	if segs == nil {
 		return nil, nil
 	}
@@ -429,20 +430,24 @@ func segmentsToCoords(segs *gml.CurveSegments, res centreResolver, msg *goaixm.M
 			} else if len(seg.GeodesicString.Pos) > 0 {
 				c, err = posSliceToCoords(seg.GeodesicString.Pos)
 			}
+			c = densifyGeodesic(c, cv.opt.GeodesicTolerance)
 		case seg.LineStringSegment != nil:
 			if seg.LineStringSegment.PosList != nil {
 				c, err = posListToCoords(seg.LineStringSegment.PosList.Value)
 			} else if len(seg.LineStringSegment.Pos) > 0 {
 				c, err = posSliceToCoords(seg.LineStringSegment.Pos)
 			}
+			if strings.EqualFold(strings.TrimSpace(seg.LineStringSegment.Interpolation), "geodesic") {
+				c = densifyGeodesic(c, cv.opt.GeodesicTolerance)
+			}
 		case seg.Arc != nil:
-			c, err = discretizeArc(seg.Arc.Pos, seg.Arc.PosList, DefaultArcPoints)
+			c, err = discretizeArc(seg.Arc.Pos, seg.Arc.PosList, cv.opt.ArcTolerance)
 		case seg.Circle != nil:
-			c, err = discretizeCircle(seg.Circle.Pos, seg.Circle.PosList, DefaultArcPoints)
+			c, err = discretizeCircle(seg.Circle.Pos, seg.Circle.PosList, cv.opt.ArcTolerance)
 		case seg.ArcByCenterPoint != nil:
-			c, err = discretizeArcByCenter(seg.ArcByCenterPoint, res)
+			c, err = discretizeArcByCenter(seg.ArcByCenterPoint, cv)
 		case seg.CircleByCenterPoint != nil:
-			c, err = discretizeCircleByCenter(seg.CircleByCenterPoint, res)
+			c, err = discretizeCircleByCenter(seg.CircleByCenterPoint, cv)
 		}
 		if err != nil {
 			return nil, err
