@@ -54,6 +54,48 @@ type Options struct {
 	// the ring wins, which after an arc is the computed end (it may differ
 	// from the source coordinate in the tenth decimal).
 	PreferSourceVertices bool
+
+	// BorderSnapTolerance, in metres, enables the border junction snap: in
+	// a ring that borrows a stretch of a referenced GeoBorder, an explicit
+	// end position of the neighbouring curve that lies on the far side of
+	// the border (the curve's own last, or first, piece crosses the border
+	// before reaching it) and within this distance of the border is moved
+	// onto the border, to the point the stretch is cut at (its nearest
+	// point on the border polyline).  Without it the literal rendering
+	// self-intersects there.  Every snap is reported to OnRepair.  0: off.
+	BorderSnapTolerance float64
+
+	// OnRepair, if set, receives every repair made to the source geometry
+	// (BorderSnapTolerance).  It is called synchronously.
+	OnRepair func(Repair)
+}
+
+// DensifyVersion identifies the algorithm behind ArcTolerance,
+// GeodesicTolerance, PreferSourceVertices and BorderSnapTolerance: it
+// changes whenever the same options give different positions, so that
+// callers storing converted geometry can tell when to convert again.
+const DensifyVersion = "1"
+
+// Repair kinds.
+const (
+	RepairBorderJunctionSnap = "border-junction-snap"
+)
+
+// Repair records one change made to the source geometry.
+type Repair struct {
+	Kind string `json:"kind"`
+	// Ring is the ring of the polygon patch: 0 the exterior, i+1 the i-th
+	// interior ring.
+	Ring int `json:"ring"`
+	// Member is the index of the ring's curveMember whose end was moved.
+	Member int `json:"member"`
+	// Border is the href of the GeoBorder snapped to.
+	Border string `json:"border,omitempty"`
+	// From is the source position, To the served one ([lon, lat]).
+	From [2]float64 `json:"from"`
+	To   [2]float64 `json:"to"`
+	// DistanceM is the geodesic distance between them, in metres.
+	DistanceM float64 `json:"distanceM"`
 }
 
 // maxDensifyPoints bounds the positions inserted into one arc, circle or
@@ -68,6 +110,7 @@ type conv struct {
 	// computed holds the end positions of discretised arcs and circles
 	// (only with PreferSourceVertices).
 	computed map[[2]float64]bool
+	ring     int // ring being converted (for Repair.Ring)
 }
 
 // markComputed records the ends of a discretised curve.

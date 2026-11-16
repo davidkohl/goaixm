@@ -3,6 +3,7 @@ package geo
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/davidkohl/goaixm"
@@ -26,6 +27,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 		return nil, fmt.Errorf("geojson: patch has no exterior")
 	}
 
+	cv.ring = 0
 	exterior, err := extractAbstractRingCoords(patch.Exterior, cv, msg, warn)
 	if err != nil {
 		return nil, err
@@ -37,6 +39,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 
 	rings := [][][2]float64{exterior}
 	for i := range patch.Interior {
+		cv.ring = i + 1
 		hole, err := extractAbstractRingCoords(&patch.Interior[i], cv, msg, prefixWarn(warn, fmt.Sprintf("interior ring %d: ", i)))
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
@@ -132,7 +135,7 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 	// to be known before it can be trimmed.
 	members := make([]ringMember, 0, len(ring.CurveMember))
 
-	for _, cm := range ring.CurveMember {
+	for idx, cm := range ring.CurveMember {
 		curve := cm.Curve
 
 		if curve == nil {
@@ -155,7 +158,7 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 			if k := len(members) - 1; k >= 0 && members[k].isBorder && members[k].href == cm.Href {
 				continue
 			}
-			members = append(members, ringMember{borderCoords, true, cm.Href})
+			members = append(members, ringMember{coords: borderCoords, isBorder: true, href: cm.Href, index: idx})
 			continue
 		}
 
@@ -164,10 +167,13 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 			return nil, err
 		}
 		if len(c) > 0 {
-			members = append(members, ringMember{coords: c})
+			members = append(members, ringMember{coords: c, index: idx})
 		}
 	}
 
+	if cv.opt.BorderSnapTolerance > 0 {
+		snapJunctions(members, cv)
+	}
 	trimBorders(members)
 	coords := joinMembers(members, warn, cv)
 	if len(coords) == 0 {
@@ -182,6 +188,91 @@ type ringMember struct {
 	coords   [][2]float64
 	isBorder bool
 	href     string
+	index    int // of the curveMember in the ring
+}
+
+// snapJunctions applies the border junction snap (see
+// Options.BorderSnapTolerance): an explicit end position of a curve next
+// to a referenced border is moved onto the border where the curve's last
+// (or first) piece crosses the border before reaching it, and the position
+// is within the tolerance of the border.
+func snapJunctions(members []ringMember, cv *conv) {
+	n := len(members)
+	if n < 2 {
+		return
+	}
+	for i := range members {
+		b := members[i]
+		if !b.isBorder || len(b.coords) < 2 {
+			continue
+		}
+		for _, following := range []bool{false, true} {
+			k := (i - 1 + n) % n
+			if following {
+				k = (i + 1) % n
+			}
+			nb := &members[k]
+			if nb.isBorder || len(nb.coords) < 2 {
+				continue
+			}
+			end, inner := len(nb.coords)-1, len(nb.coords)-2
+			if following {
+				end, inner = 0, 1
+			}
+			p, q := nb.coords[end], nb.coords[inner]
+			cut := borderPoint(b.coords, project(b.coords, p))
+			d := GeodesicDistance(p[1], p[0], cut[1], cut[0])
+			if d == 0 || d > cv.opt.BorderSnapTolerance || !crossesBefore(q, p, b.coords) {
+				continue
+			}
+			c := slices.Clone(nb.coords)
+			c[end] = cut
+			nb.coords = c
+			if cv.opt.OnRepair != nil {
+				cv.opt.OnRepair(Repair{Kind: RepairBorderJunctionSnap, Ring: cv.ring, Member: nb.index, Border: b.href,
+					From: p, To: cut, DistanceM: d})
+			}
+		}
+	}
+}
+
+// borderPoint returns the position at parameter s = i + t of a polyline.
+func borderPoint(line [][2]float64, s float64) [2]float64 {
+	i := int(math.Floor(s))
+	if i >= len(line)-1 {
+		return line[len(line)-1]
+	}
+	t := s - float64(i)
+	a, b := line[i], line[i+1]
+	return [2]float64{a[0] + t*(b[0]-a[0]), a[1] + t*(b[1]-a[1])}
+}
+
+// crossesBefore reports whether the straight lon/lat segment q→p crosses
+// the polyline anywhere but at p itself: p then lies on the far side of
+// the polyline from q.
+func crossesBefore(q, p [2]float64, line [][2]float64) bool {
+	minX, maxX := math.Min(q[0], p[0]), math.Max(q[0], p[0])
+	minY, maxY := math.Min(q[1], p[1]), math.Max(q[1], p[1])
+	rx, ry := p[0]-q[0], p[1]-q[1]
+	for j := 0; j+1 < len(line); j++ {
+		a, b := line[j], line[j+1]
+		if math.Max(a[0], b[0]) < minX || math.Min(a[0], b[0]) > maxX ||
+			math.Max(a[1], b[1]) < minY || math.Min(a[1], b[1]) > maxY {
+			continue
+		}
+		sx, sy := b[0]-a[0], b[1]-a[1]
+		den := rx*sy - ry*sx
+		if den == 0 {
+			continue // parallel
+		}
+		ax, ay := a[0]-q[0], a[1]-q[1]
+		t := (ax*sy - ay*sx) / den // along q→p
+		u := (ax*ry - ay*rx) / den // along a→b
+		if t >= 0 && t < 1-1e-9 && u >= 0 && u <= 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // trimBorders reduces each referenced border to the stretch the ring

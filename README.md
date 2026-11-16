@@ -164,6 +164,12 @@ comps, err := opt.AirspaceComponents(airspace, msg)
 | `ArcTolerance` | `ArcByCenterPoint`, `CircleByCenterPoint`, `Arc`, `Circle` | Equal bearing steps with chord sagitta r·(1 − cos(Δθ/2)) ≤ tolerance, then verified per chord against the straight lon/lat line (more steps if needed); at least 8 per arc |
 | `GeodesicTolerance` | `GeodesicString`, `LineStringSegment interpolation="geodesic"` (also inside `GeoBorder`s) | Each segment split into n equal geodesic pieces (Vincenty direct), n the smallest found with every piece's lon/lat chord within the tolerance at its midpoint; segments crossing the antimeridian are left as they are |
 
+| `PreferSourceVertices` | joins of a computed arc end with an explicit vertex | The explicit source position is kept |
+| `BorderSnapTolerance` | rings borrowing a referenced `GeoBorder` | An explicit end vertex of the neighbouring curve that lies beyond the border (its own last or first piece crosses it) and within the tolerance is moved onto the border at the cut point; each move is reported to `OnRepair` as a `geo.Repair` |
+
+`geo.DensifyVersion` changes whenever the same options give different
+positions, for callers that store converted geometry.
+
 The `Options` methods mirror the package functions (`SegmentCoords`,
 `CurveCoords`, `SurfaceRings`, `SurfacePolygons`, `AirspaceComponents`,
 `AirspaceToGeoJSON`, `AirspaceToGeoJSONWithRefs`); the zero value behaves
