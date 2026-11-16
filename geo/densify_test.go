@@ -2,6 +2,7 @@ package geo_test
 
 import (
 	"context"
+	"encoding/xml"
 	"math"
 	"strconv"
 	"testing"
@@ -294,4 +295,47 @@ func TestDensifyDirectionIndependent(t *testing.T) {
 		return c
 	}
 	reversedEqual("arc", arc(10, 50), arc(50, 10))
+}
+
+// PreferSourceVertices keeps the explicit vertex that follows (or closes a
+// ring after) an arc whose computed end coincides with it.
+func TestPreferSourceVertices(t *testing.T) {
+	arc := gml.ArcByCenterPoint{
+		Pos: &gml.DirectPosition{Value: pos(51.4, 11.5)}, Radius: gml.Measure{Value: 5, UOM: "NM"},
+		StartAngle: &gml.Angle{Value: 0}, EndAngle: &gml.Angle{Value: 90},
+	}
+	end, _ := geo.SegmentCoords(&gml.CurveSegments{ArcByCenterPoint: []gml.ArcByCenterPoint{arc}}, nil)
+	e := end[len(end)-1]
+	src := [2]float64{e[0] + 3e-10, e[1] - 4e-10} // as rounded in the source
+	segs := func() *gml.CurveSegments {
+		doc := `<segments xmlns="http://www.opengis.net/gml/3.2">
+		  <ArcByCenterPoint numArc="1"><pos>51.4 11.5</pos><radius uom="NM">5</radius>
+		    <startAngle uom="deg">0</startAngle><endAngle uom="deg">90</endAngle></ArcByCenterPoint>
+		  <GeodesicString><posList>` + pos(src[1], src[0]) + ` 51.3 11.4</posList></GeodesicString>
+		</segments>`
+		var s gml.CurveSegments
+		if err := xml.Unmarshal([]byte(doc), &s); err != nil {
+			t.Fatal(err)
+		}
+		return &s
+	}
+	has := func(c [][2]float64, p [2]float64) bool {
+		for _, q := range c {
+			if q == p {
+				return true
+			}
+		}
+		return false
+	}
+	for _, o := range []geo.Options{{}, {ArcTolerance: 1, GeodesicTolerance: 1}} {
+		c, _ := o.SegmentCoords(segs(), nil)
+		if has(c, src) {
+			t.Errorf("%+v: source vertex kept without PreferSourceVertices", o)
+		}
+		o.PreferSourceVertices = true
+		c, _ = o.SegmentCoords(segs(), nil)
+		if !has(c, src) {
+			t.Errorf("%+v: source vertex replaced by the computed arc end", o)
+		}
+	}
 }

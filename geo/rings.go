@@ -30,7 +30,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 	if err != nil {
 		return nil, err
 	}
-	exterior, err = finishRing(exterior, true)
+	exterior, err = finishRing(exterior, true, cv)
 	if err != nil {
 		return nil, fmt.Errorf("geojson: exterior ring: %w", err)
 	}
@@ -41,7 +41,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
 		}
-		hole, err = finishRing(hole, false)
+		hole, err = finishRing(hole, false, cv)
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
 		}
@@ -52,7 +52,11 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 
 // finishRing closes a ring and orients it, rejecting rings too small to
 // enclose an area.
-func finishRing(ring [][2]float64, ccw bool) ([][2]float64, error) {
+func finishRing(ring [][2]float64, ccw bool, cv *conv) ([][2]float64, error) {
+	if n := len(ring); cv != nil && n > 1 && samePoint(ring[0], ring[n-1]) &&
+		cv.computed[ring[0]] && !cv.computed[ring[n-1]] {
+		ring[0] = ring[n-1] // the source position closes the ring
+	}
 	ring = closeRing(ring)
 	if len(ring) < 4 {
 		return nil, fmt.Errorf("geojson: ring has %d positions, need at least 4", len(ring))
@@ -165,7 +169,7 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 	}
 
 	trimBorders(members)
-	coords := joinMembers(members, warn)
+	coords := joinMembers(members, warn, cv)
 	if len(coords) == 0 {
 		return nil, fmt.Errorf("geojson: Ring has no coordinates")
 	}
@@ -310,7 +314,7 @@ func cutBorder(border [][2]float64, from, to borderCut) [][2]float64 {
 // wider than maxJoinGap, and a ring that does not close, are reported through
 // warn: the gap is bridged by a straight line, which may cut across the area
 // the source describes.
-func joinMembers(members []ringMember, warn func(string)) [][2]float64 {
+func joinMembers(members []ringMember, warn func(string), cv *conv) [][2]float64 {
 	var coords [][2]float64
 	for k, m := range members {
 		c := m.coords
@@ -329,7 +333,7 @@ func joinMembers(members []ringMember, warn func(string)) [][2]float64 {
 					k+1, hrefNote(m), dStart, last[1], last[0], c[0][1], c[0][0]))
 			}
 		}
-		coords = appendDedup(coords, c)
+		coords = cv.appendDedup(coords, c)
 	}
 	if len(coords) > 1 && warn != nil {
 		if d := distMetres(coords[len(coords)-1], coords[0]); d > maxJoinGap {
@@ -452,7 +456,10 @@ func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([
 		if err != nil {
 			return nil, err
 		}
-		coords = appendDedup(coords, c)
+		if seg.Arc != nil || seg.Circle != nil || seg.ArcByCenterPoint != nil || seg.CircleByCenterPoint != nil {
+			cv.markComputed(c)
+		}
+		coords = cv.appendDedup(coords, c)
 	}
 	return coords, nil
 }

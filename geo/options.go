@@ -47,6 +47,13 @@ type Options struct {
 	// densified by the same rule.  LineStringSegment without
 	// interpolation="geodesic" (GML default: linear) is never densified.
 	GeodesicTolerance float64
+
+	// PreferSourceVertices keeps the explicit source position where a
+	// computed arc or circle end coincides with it (within 1e-9°, where the
+	// two are joined into one position).  Without it the position first in
+	// the ring wins, which after an arc is the computed end (it may differ
+	// from the source coordinate in the tenth decimal).
+	PreferSourceVertices bool
 }
 
 // maxDensifyPoints bounds the positions inserted into one arc, circle or
@@ -58,6 +65,30 @@ const maxDensifyPoints = 1 << 16
 type conv struct {
 	res centreResolver
 	opt Options
+	// computed holds the end positions of discretised arcs and circles
+	// (only with PreferSourceVertices).
+	computed map[[2]float64]bool
+}
+
+// markComputed records the ends of a discretised curve.
+func (cv *conv) markComputed(c [][2]float64) {
+	if !cv.opt.PreferSourceVertices || len(c) == 0 {
+		return
+	}
+	if cv.computed == nil {
+		cv.computed = map[[2]float64]bool{}
+	}
+	cv.computed[c[0]], cv.computed[c[len(c)-1]] = true, true
+}
+
+// appendDedup is the package appendDedup, keeping a source position
+// instead of a coinciding computed one when PreferSourceVertices is set.
+func (cv *conv) appendDedup(dst, src [][2]float64) [][2]float64 {
+	if cv != nil && len(dst) > 0 && len(src) > 0 && samePoint(dst[len(dst)-1], src[0]) &&
+		cv.computed[dst[len(dst)-1]] && !cv.computed[src[0]] {
+		dst[len(dst)-1] = src[0]
+	}
+	return appendDedup(dst, src)
 }
 
 func (o Options) conv(msg *goaixm.Message) *conv {
