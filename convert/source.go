@@ -89,15 +89,20 @@ func (t *tempSource) Name() string                 { return t.name }
 func (t *tempSource) Open() (io.ReadCloser, error) { return os.Open(t.path) }
 func (t *tempSource) remove()                      { os.Remove(t.path) }
 
-// runToTemp runs one converter into a temporary XMLWriter document and
-// returns it as a Source for the next step.
-func runToTemp(ctx context.Context, c Converter, src Source) (*tempSource, *Report, error) {
+// runToTemp runs one converter into a temporary XMLWriter document, teed
+// to also when not nil, and returns the document as a Source for the next
+// step.
+func runToTemp(ctx context.Context, c Converter, src Source, also Sink) (*tempSource, *Report, error) {
 	f, err := os.CreateTemp("", "goaixm-chain-*.xml")
 	if err != nil {
 		return nil, nil, fmt.Errorf("convert: chain: %w", err)
 	}
 	ts := &tempSource{path: f.Name(), name: src.Name()}
-	rep, err := Run(ctx, c, src, XMLWriter(f))
+	var dst Sink = XMLWriter(f)
+	if also != nil {
+		dst = Tee(dst, also)
+	}
+	rep, err := Run(ctx, c, src, dst)
 	if cerr := f.Close(); err == nil && cerr != nil {
 		err = fmt.Errorf("convert: chain: %w", cerr)
 	}

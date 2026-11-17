@@ -193,6 +193,11 @@ func Run(ctx context.Context, c Converter, src Source, dst Sink) (*Report, error
 // afterwards; intermediate versions must therefore be AIXM 5.x.  The
 // chain's report has one entry in Steps per converter (each completed by
 // Run) and no Kinds of its own.
+//
+// Record provenance is composed across the steps, so it names the original
+// source: a later step's SourceIndex refers to member positions of the
+// intermediate document, which are mapped back to the provenance of those
+// intermediate records (kinds and keys of several sources joined by "+").
 func Chain(cs ...Converter) (Converter, error) {
 	if len(cs) == 0 {
 		return nil, errors.New("convert: empty chain")
@@ -238,22 +243,99 @@ func (c *chain) Convert(ctx context.Context, src Source, dst Sink) (*Report, err
 			t.remove()
 		}
 	}()
+	var prev []Provenance // provenance of the current intermediate's records
 	for i, step := range c.cs {
 		if i == len(c.cs)-1 {
-			r, err := Run(ctx, step, cur, dst)
+			r, err := Run(ctx, step, cur, &composeSink{Sink: dst, prev: prev})
 			if err != nil {
 				return nil, err
 			}
 			rep.Steps = append(rep.Steps, r)
 			break
 		}
-		next, r, err := runToTemp(ctx, step, cur)
+		rec := &composeSink{prev: prev}
+		next, r, err := runToTemp(ctx, step, cur, rec)
 		if err != nil {
 			return nil, err
 		}
 		temps = append(temps, next)
 		rep.Steps = append(rep.Steps, r)
-		cur = next
+		cur, prev = next, rec.out
 	}
 	return rep, nil
+}
+
+// composeSink maps the provenance of records written from an intermediate
+// document back to the original source and, without a Sink, only records
+// the composed provenance.
+type composeSink struct {
+	Sink
+	prev []Provenance
+	out  []Provenance
+}
+
+func (s *composeSink) Begin(h Header) error {
+	if s.Sink == nil {
+		return nil
+	}
+	return s.Sink.Begin(h)
+}
+
+func (s *composeSink) Put(r Record) error {
+	r.Provenance = compose(r.Provenance, s.prev)
+	if s.Sink == nil {
+		s.out = append(s.out, r.Provenance)
+		return nil
+	}
+	return s.Sink.Put(r)
+}
+
+func (s *composeSink) End() error {
+	if s.Sink == nil {
+		return nil
+	}
+	return s.Sink.End()
+}
+
+// compose maps p, whose SourceIndex refers to records of an intermediate
+// document, to the provenance of those records.  prev nil (first step)
+// leaves p unchanged, as do indexes outside prev.
+func compose(p Provenance, prev []Provenance) Provenance {
+	if prev == nil || len(p.SourceIndex) == 0 {
+		return p
+	}
+	for _, i := range p.SourceIndex {
+		if i < 0 || i >= len(prev) {
+			return p
+		}
+	}
+	out := Provenance{SourceVersion: prev[p.SourceIndex[0]].SourceVersion}
+	var kinds, keys []string
+	seenIdx := map[int]bool{}
+	for _, i := range p.SourceIndex {
+		q := prev[i]
+		kinds = appendUnique(kinds, q.SourceKind)
+		keys = appendUnique(keys, q.SourceKey)
+		for _, j := range q.SourceIndex {
+			if !seenIdx[j] {
+				seenIdx[j] = true
+				out.SourceIndex = append(out.SourceIndex, j)
+			}
+		}
+		out.SourceIDs = append(out.SourceIDs, q.SourceIDs...)
+	}
+	out.SourceKind, out.SourceKey = strings.Join(kinds, "+"), strings.Join(keys, "+")
+	return out
+}
+
+func appendUnique(list []string, s string) []string {
+	if s == "" {
+		return list
+	}
+	for _, x := range list {
+		if x == s {
+			return list
+		}
+	}
+	return append(list, s)
 }
