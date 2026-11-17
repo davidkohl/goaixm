@@ -262,3 +262,41 @@ func TestViews(t *testing.T) {
 		t.Errorf("Rdn view %+v", rdn)
 	}
 }
+
+func TestAirspaceViews(t *testing.T) {
+	ase := aixm45.NewAse(node(t, `<Ase><AseUid mid="7"><codeType>CTR</codeType><codeId>XA</codeId></AseUid><txtName>EXAMPLE</txtName><codeClass>D</codeClass>
+		<codeDistVerUpper>STD</codeDistVerUpper><valDistVerUpper>065</valDistVerUpper><uomDistVerUpper>FL</uomDistVerUpper>
+		<codeDistVerMnm>HEI</codeDistVerMnm><valDistVerMnm>500</valDistVerMnm><uomDistVerMnm>FT</uomDistVerMnm>
+		<Att><codeWorkHr>TIMSH</codeWorkHr><Timsh><codeTimeRef>UTC</codeTimeRef><timeWef>07:00</timeWef></Timsh><txtRmkWorkHr>R</txtRmkWorkHr></Att></Ase>`))
+	if ase.Uid.Key != "Ase(codeId=XA;codeType=CTR)" || ase.Uid.MID != "7" || ase.Name.Text != "EXAMPLE" || ase.CodeClass.Text != "D" ||
+		ase.Upper.Val.Text != "065" || ase.Upper.Uom.Text != "FL" || ase.Min.Code.Text != "HEI" || ase.Lower.OK() || len(ase.Att) != 1 {
+		t.Errorf("Ase %+v", ase)
+	}
+	att := aixm45.NewAtt(ase.Att[0])
+	if att.WorkHr.Text != "TIMSH" || att.RmkWorkHr.Text != "R" || len(att.Timsh) != 1 || att.Timsh[0].TimeWef.Text != "07:00" || att.Timsh[0].TimeTil.OK() {
+		t.Errorf("Att %+v", att)
+	}
+	abd := aixm45.NewAbd(node(t, `<Abd><AbdUid mid="8"><AseUid mid="7"><codeType>CTR</codeType><codeId>XA</codeId></AseUid></AbdUid>
+		<Avx><GbrUid><txtName>B</txtName></GbrUid><codeType>FNT</codeType><geoLat>10N</geoLat><geoLong>020E</geoLong><codeDatum>WGE</codeDatum></Avx>
+		<Avx><codeType>CWA</codeType><geoLat>11N</geoLat><geoLong>020E</geoLong><geoLatArc>10N</geoLatArc><geoLongArc>021E</geoLongArc><valRadiusArc>5</valRadiusArc><uomRadiusArc>NM</uomRadiusArc></Avx></Abd>`))
+	if abd.Ase.Key != "Ase(codeId=XA;codeType=CTR)" || abd.Ase.MID != "7" || abd.Uid.MID != "8" || len(abd.Vertex) != 2 || abd.Circle != nil ||
+		abd.Vertex[0].Gbr.Key != "Gbr(txtName=B)" || abd.Vertex[1].ArcLong.Text != "021E" || abd.Vertex[1].RadiusUom.Text != "NM" || abd.Vertex[0].Position.Datum.Text != "WGE" {
+		t.Errorf("Abd %+v", abd)
+	}
+	cir := aixm45.NewAbd(node(t, `<Abd><AbdUid><AseUid><codeType>R</codeType><codeId>XB</codeId></AseUid></AbdUid><Circle><geoLatCen>10N</geoLatCen><geoLongCen>020E</geoLongCen><valRadius>2</valRadius><uomRadius>KM</uomRadius></Circle></Abd>`))
+	if cir.Circle == nil || cir.Circle.Centre.Lat.Text != "10N" || cir.Circle.Radius.Text != "2" || len(cir.Vertex) != 0 {
+		t.Errorf("circle %+v", cir)
+	}
+	adg := aixm45.NewAdg(node(t, `<Adg><AdgUid><AseUid><codeType>CTR</codeType><codeId>XA</codeId></AseUid></AdgUid>
+		<AseUidBase><codeType>CTR</codeType><codeId>XA1</codeId></AseUidBase>
+		<codeOpr>UNION</codeOpr><AseUidComponent mid="3"><codeType>CTR</codeType><codeId>XA2</codeId></AseUidComponent>
+		<AseUidComponent><codeType>CTR</codeType><codeId>XA3</codeId></AseUidComponent><codeOpr>SUBTR</codeOpr></Adg>`))
+	if adg.Ase.Key != "Ase(codeId=XA;codeType=CTR)" || adg.Base.Key != "Ase(codeId=XA1;codeType=CTR)" || len(adg.Parts) != 2 ||
+		adg.Parts[0].Opr.Text != "UNION" || adg.Parts[0].Ase.MID != "3" || adg.Parts[1].Opr.OK() || len(adg.Stray) != 1 || adg.SameExtent.OK() {
+		t.Errorf("Adg %+v", adg)
+	}
+	gbr := aixm45.NewGbr(node(t, `<Gbr><GbrUid><txtName>B</txtName></GbrUid><codeType>ST</codeType><Gbv><codeType>GRC</codeType><geoLat>10N</geoLat><geoLong>020E</geoLong></Gbv><Gbv><codeType>END</codeType><geoLat>11N</geoLat><geoLong>020E</geoLong></Gbv></Gbr>`))
+	if gbr.Uid.Key != "Gbr(txtName=B)" || gbr.Name.Text != "B" || gbr.CodeType.Text != "ST" || len(gbr.Vertex) != 2 || gbr.Vertex[1].CodeType.Text != "END" {
+		t.Errorf("Gbr %+v", gbr)
+	}
+}
