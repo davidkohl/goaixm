@@ -1,0 +1,135 @@
+# AIXM 4.5 to 5.1.1 mapping rules of goaixm/aixm45to51.
+#
+# One rule per line, tab-separated:
+#   id	source path	target path	outcome	reference	note
+# The outcome is the nominal one; a value that does not fit its target
+# gets lossy or invalid instead (see the code).  Reference "goaixm" marks a
+# goaixm proposal: the official EUROCONTROL AICM/AIXM 4.5 to AIXM 5.1
+# mapping was not available when these rules were written; every such rule
+# is to be reconciled against it and the reference replaced by its section.
+# Changing this file changes ConverterID.MappingDigest; bump Version too.
+#
+# Document and time slice
+HDR-VER	AIXM-Snapshot/@version	AIXMBasicMessage (AIXM 5.1.1)	derived	goaixm	source version detected, target version fixed
+HDR-EFF	AIXM-Snapshot/@effective	*TimeSlice/validTime/TimePeriod/beginPosition; */featureLifetime/TimePeriod/beginPosition	mapped	goaixm	verbatim, keeping its offset; endPosition indeterminatePosition=unknown
+HDR-ATTR	AIXM-Snapshot/@origin, @created	AIXMBasicMessage header comment (convert.Header.Attrs)	mapped	goaixm	informative only
+HDR-OTHER	AIXM-Snapshot/@*	-	unmapped	goaixm	other root attributes
+TS-LIFE	(none)	*/featureLifetime	defaulted	goaixm	4.5 carries no lifetime: begin = effective
+TS-SEQ	(none)	*TimeSlice/interpretation, sequenceNumber, correctionNumber	defaulted	goaixm	constant BASELINE, Config.Sequence (default 1), 0; not counted per record
+# Identity and references
+ID-KEY	*/…Uid	gml:identifier (UUIDv5 over "aixm45:" + aixm45.Key, Config.Namespace)	derived	goaixm	duplicate keys get #n (D7); not counted per leaf: the key leaves carry their own rules
+ID-MID	*/…Uid/@mid (own)	convert.Provenance.SourceIDs	mapped	goaixm	not part of the identity (D4)
+REF-MID	*/…Uid/@mid (reference)	-	unmapped	goaixm	references resolve by natural key
+NO-UID	* without its own …Uid	-	invalid	goaixm	element cannot be identified; dropped
+# Common values
+GEN-RMK	*/txtRmk	*/annotation/Note[purpose=REMARK]	mapped	goaixm
+GEN-CRC	*/valCrc	-	unmapped	goaixm	5.1.1 has no CRC on the feature
+GEN-TT	*/Aht, Vtt, Dtt, Ntt, Ttt (timesheets)	-	unmapped	goaixm	phase 2 (availability timesheets)
+GEN-VALUE	value not valid in its 5.1.1 type	*/annotation/Note[propertyName=<target>, purpose=REMARK]	lossy	goaixm	value kept as a note, property omitted
+GEN-CODE	code not in the 5.1.1 list	OTHER + */annotation/Note[propertyName=<target>]	lossy	goaixm	only for lists with OTHER; otherwise invalid
+UNMAPPED	other leaves of a mapped kind	-	unmapped	goaixm	not (yet) mapped
+PH1B	Ase, Abd, Adg, Gbr, Att, … (airspace, borders)	-	unmapped	goaixm	phase 1b
+LATER	every other kind	-	unmapped	goaixm	phase 2 or later
+# Geometry (positions): every *-POS rule writes decimal degrees, lat long,
+# exact to the source precision (aixm45.Coord.Decimals), with srsName
+# urn:ogc:def:crs:EPSG::4326.  A coordinate that does not parse is invalid
+# under its *-POS rule and no point is written.
+GEO-DATUM	*/codeDatum	srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]	mapped	goaixm	WGE mapped; any other datum (U unknown, …) lossy: coordinates carried untransformed (D10), datum_unknown / datum_not_wgs84 error per feature
+GEO-ELEV	*/valElev + uomDistVer	*/ElevatedPoint/elevation	mapped	goaixm
+GEO-ELEVACC	*/valElevAccuracy	*/ElevatedPoint/verticalAccuracy	mapped	goaixm	unit uomDistVer
+GEO-GEOID	*/valGeoidUndulation	*/ElevatedPoint/geoidUndulation	mapped	goaixm	unit uomDistVer
+GEO-HACC	*/valGeoAccuracy + uomGeoAccuracy	*/Point|ElevatedPoint/horizontalAccuracy	mapped	goaixm
+# Org
+ORG-NAME	Org/OrgUid/txtName	OrganisationAuthority/name	mapped	goaixm
+ORG-DESIG	Org/codeId	OrganisationAuthority/designator	mapped	goaixm
+ORG-TYPE	Org/codeType	OrganisationAuthority/type	mapped	goaixm	codes org_type
+# Uni
+UNI-NAME	Uni/UniUid/txtName	Unit/name	mapped	goaixm
+UNI-TYPE	Uni/codeType	Unit/type	mapped	goaixm	codes unit_type
+UNI-CLASS	Uni/codeClass	-	unmapped	goaixm	open question: compliantICAO or military?
+UNI-ORG	Uni/OrgUid	Unit/ownerOrganisation	derived	goaixm
+UNI-AHP	Uni/AhpUid	Unit/airportLocation	derived	goaixm
+UNI-POS	Uni/geoLat, geoLong	Unit/position/ElevatedPoint	mapped	goaixm	positions as in "Geometry"
+# Dpn
+DPN-DESIG	Dpn/DpnUid/codeId	DesignatedPoint/designator	mapped	goaixm
+DPN-TYPE	Dpn/codeType	DesignatedPoint/type	mapped	goaixm	codes dpn_type
+DPN-NAME	Dpn/txtName	DesignatedPoint/name	mapped	goaixm
+DPN-POS	Dpn/DpnUid/geoLat, geoLong	DesignatedPoint/location/Point	mapped	goaixm	positions as in "Geometry"
+DPN-AHP	Dpn/AhpUidAssoc	DesignatedPoint/airportHeliport	derived	goaixm
+DPN-AHP2	Dpn/AhpUid	DesignatedPoint/airportHeliport	derived	goaixm	open question: AhpUid beside AhpUidAssoc; only one is written
+# Navaid equipment (Vor, Dme, Ndb, Tcn) and the derived Navaid
+NAV-DESIG	Vor|Dme|Ndb|Tcn/…Uid/codeId	VOR|DME|NDB|TACAN/designator (and Navaid/designator)	mapped	goaixm
+NAV-NAME	Vor|Dme|Ndb|Tcn/txtName	VOR|DME|NDB|TACAN/name (and Navaid/name)	mapped	goaixm
+NAV-POS	Vor|Dme|Ndb|Tcn/…Uid/geoLat, geoLong	…/location/ElevatedPoint (and Navaid/location)	mapped	goaixm	positions as in "Geometry"
+NAV-ORG	Vor|Dme|Ndb|Tcn/OrgUid	…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority	derived	goaixm	role (type) not written
+NAV-MAGVAR	Vor|Dme|Ndb|Tcn/valMagVar	…/magneticVariation	mapped	goaixm
+NAV-MAGVARDATE	Vor|Dme|Ndb|Tcn/dateMagVar	…/dateMagneticVariation	mapped	goaixm
+NAV-NAVAID	(collocation)	Navaid (type, navaidEquipment/NavaidComponent)	derived	goaixm	one Navaid per Vor (VOR, VOR_DME with a Dme/VorUid, VORTAC with a Tcn/VorUid), per Ndb (NDB), per uncollocated Dme (DME) and Tcn (TACAN); emitted after its primary equipment
+VOR-TYPE	Vor/codeType	VOR/type	mapped	goaixm	codes vor_type
+VOR-FREQ	Vor/valFreq + uomFreq	VOR/frequency	mapped	goaixm
+VOR-NORTH	Vor/codeTypeNorth	VOR/zeroBearingDirection	mapped	goaixm	codes north_ref
+VOR-DECL	Vor/valDeclination	VOR/declination	mapped	goaixm
+DME-VOR	Dme/VorUid	Navaid[type=VOR_DME]/navaidEquipment	derived	goaixm	collocation
+DME-TYPE	Dme/codeType	DME/type	mapped	goaixm	codes dme_type
+DME-CHAN	Dme/codeChannel	DME/channel	mapped	goaixm
+DME-GHOST	Dme/valGhostFreq + uomGhostFreq	DME/ghostFrequency	mapped	goaixm
+DME-DISPL	Dme/valDisplace + uomDisplace	DME/displace	mapped	goaixm
+NDB-FREQ	Ndb/valFreq + uomFreq	NDB/frequency	mapped	goaixm
+NDB-CLASS	Ndb/codeClass	NDB/class	mapped	goaixm	codes ndb_class
+NDB-EM	Ndb/codeEm	NDB/emissionClass	mapped	goaixm	codes emission
+TCN-VOR	Tcn/VorUid	Navaid[type=VORTAC]/navaidEquipment	derived	goaixm	collocation
+TCN-CHAN	Tcn/codeChannel	TACAN/channel	mapped	goaixm
+TCN-DECL	Tcn/valDeclination	TACAN/declination	mapped	goaixm
+# Obs
+OBS-NAME	Obs/txtName	VerticalStructure/name	mapped	goaixm
+OBS-TYPE	Obs/txtDescrType	VerticalStructure/type=OTHER + annotation/Note[propertyName=type, purpose=DESCRIPTION]	lossy	goaixm	free text; mapped when Config.ObstacleType gives a code
+OBS-LGT	Obs/codeLgt	VerticalStructure/lighted	mapped	goaixm	codes yes_no
+OBS-GROUP	Obs/codeGroup	VerticalStructure/group	mapped	goaixm	codes yes_no
+OBS-DESCRLGT	Obs/txtDescrLgt	VerticalStructure/annotation/Note[propertyName=lighted, purpose=DESCRIPTION]	mapped	goaixm
+OBS-DESCRMARK	Obs/txtDescrMarking	VerticalStructure/annotation/Note[propertyName=markingICAOStandard, purpose=DESCRIPTION]	mapped	goaixm
+OBS-HGT	Obs/valHgt + uomDistVer	VerticalStructure/part/VerticalStructurePart/verticalExtent	mapped	goaixm
+OBS-POS	Obs/ObsUid/geoLat, geoLong	…/VerticalStructurePart/horizontalProjection_location/ElevatedPoint	mapped	goaixm	one part per obstacle; positions as in "Geometry"
+# Ahp
+AHP-DESIG	Ahp/AhpUid/codeId	AirportHeliport/designator	mapped	goaixm
+AHP-NAME	Ahp/txtName	AirportHeliport/name	mapped	goaixm
+AHP-ICAO	Ahp/codeIcao	AirportHeliport/locationIndicatorICAO	mapped	goaixm
+AHP-IATA	Ahp/codeIata	AirportHeliport/designatorIATA	mapped	goaixm
+AHP-TYPE	Ahp/codeType	AirportHeliport/type	mapped	goaixm	codes ahp_type
+AHP-ORG	Ahp/OrgUid	AirportHeliport/responsibleOrganisation/AirportHeliportResponsibilityOrganisation/theOrganisationAuthority	derived	goaixm	role not written
+AHP-POS	Ahp/geoLat, geoLong	AirportHeliport/ARP/ElevatedPoint	mapped	goaixm	positions as in "Geometry"
+AHP-ELEV	Ahp/valElev + uomDistVer	AirportHeliport/fieldElevation	mapped	goaixm	not repeated on the ARP
+AHP-ELEVACC	Ahp/valElevAccuracy	AirportHeliport/fieldElevationAccuracy	mapped	goaixm
+AHP-GEOID	Ahp/valGeoidUndulation	AirportHeliport/ARP/ElevatedPoint/geoidUndulation	mapped	goaixm
+AHP-MAGVAR	Ahp/valMagVar	AirportHeliport/magneticVariation	mapped	goaixm
+AHP-MAGVARDATE	Ahp/dateMagVar	AirportHeliport/dateMagneticVariation	mapped	goaixm
+AHP-MAGVARCHG	Ahp/valMagVarChg	AirportHeliport/magneticVariationChange	mapped	goaixm
+AHP-REFT	Ahp/valRefT + uomRefT	AirportHeliport/referenceTemperature	mapped	goaixm
+AHP-TA	Ahp/valTransitionAlt + uomTransitionAlt	AirportHeliport/transitionAltitude	mapped	goaixm
+AHP-CITY	Ahp/txtNameCitySer	AirportHeliport/servedCity/City/name	mapped	goaixm
+AHP-ADMIN	Ahp/txtNameAdmin	-	unmapped	goaixm	open question: no evident 5.1.1 property
+AHP-DESCRREF	Ahp/txtDescrRefPt	AirportHeliport/annotation/Note[propertyName=ARP, purpose=DESCRIPTION]	mapped	goaixm
+AHP-DESCRSITE	Ahp/txtDescrSite	AirportHeliport/annotation/Note[purpose=DESCRIPTION]	mapped	goaixm	open question: target property
+AHP-DESCRACL	Ahp/txtDescrAcl	AirportHeliport/annotation/Note[propertyName=altimeterCheckLocation, purpose=DESCRIPTION]	mapped	goaixm
+# Rwy
+RWY-DESIG	Rwy/RwyUid/txtDesig	Runway/designator	mapped	goaixm
+RWY-AHP	Rwy/RwyUid/AhpUid	Runway/associatedAirportHeliport	derived	goaixm
+RWY-LEN	Rwy/valLen + uomDimRwy	Runway/nominalLength	mapped	goaixm
+RWY-WID	Rwy/valWid + uomDimRwy	Runway/nominalWidth	mapped	goaixm
+RWY-LENSTRIP	Rwy/valLenStrip + uomDimStrip	Runway/lengthStrip	mapped	goaixm
+RWY-WIDSTRIP	Rwy/valWidStrip + uomDimStrip	Runway/widthStrip	mapped	goaixm
+RWY-COMP	Rwy/codeComposition	Runway/surfaceProperties/SurfaceCharacteristics/composition	mapped	goaixm	codes surface
+RWY-PCN	Rwy/valPcnClass	…/SurfaceCharacteristics/classPCN	mapped	goaixm
+RWY-PCNTYPE	Rwy/codePcnPavementType	…/SurfaceCharacteristics/pavementTypePCN	mapped	goaixm	codes pcn_pavement
+RWY-PCNSUB	Rwy/codePcnPavementSubgrade	…/SurfaceCharacteristics/pavementSubgradePCN	mapped	goaixm	codes pcn_subgrade
+RWY-PCNTYRE	Rwy/codePcnMaxTirePressure	…/SurfaceCharacteristics/maxTyrePressurePCN	mapped	goaixm	codes pcn_tyre
+RWY-PCNEVAL	Rwy/codePcnEvalMethod	…/SurfaceCharacteristics/evaluationMethodPCN	mapped	goaixm	codes pcn_method
+RWY-PCNNOTE	Rwy/txtPcnNote	…/SurfaceCharacteristics/annotation/Note[purpose=DESCRIPTION]	mapped	goaixm
+RWY-PROFILE	Rwy/txtProfile	Runway/annotation/Note[purpose=DESCRIPTION]	mapped	goaixm	open question: target property
+RWY-MARKING	Rwy/txtMarking	Runway/annotation/Note[purpose=DESCRIPTION]	mapped	goaixm	open question: RunwayMarking (phase 2)?
+# Rdn
+RDN-DESIG	Rdn/RdnUid/txtDesig	RunwayDirection/designator	mapped	goaixm
+RDN-RWY	Rdn/RdnUid/RwyUid	RunwayDirection/usedRunway	derived	goaixm
+RDN-TRUEBRG	Rdn/valTrueBrg	RunwayDirection/trueBearing	mapped	goaixm
+RDN-MAGBRG	Rdn/valMagBrg	RunwayDirection/magneticBearing	mapped	goaixm
+RDN-TDZ	Rdn/valElevTdz + uomElevTdz	RunwayDirection/elevationTDZ	mapped	goaixm
+RDN-POS	Rdn/geoLat, geoLong, codeDatum	-	unmapped	goaixm	open question: threshold position, RunwayCentrelinePoint (phase 2)

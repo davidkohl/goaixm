@@ -1,0 +1,209 @@
+# AIXM 4.5 to 5.1.1 code and unit lists of goaixm/aixm45to51.
+#
+# "list" lines declare a list: name, the 5.1.1 type of its values, and
+# whether an unknown 4.5 value becomes OTHER with a note (other; the type
+# must accept OTHER) or is invalid and dropped (closed; used for units,
+# where OTHER says nothing).  "code" lines map
+# one 4.5 value: list, 4.5 value, 5.1.1 value, reference.  Reference
+# "goaixm" marks a goaixm proposal, to be reconciled against the official
+# EUROCONTROL AICM/AIXM 4.5 to AIXM 5.1 mapping.  Tests check every 5.1.1
+# value against the enumerations of the vendored 5.1.1 XSD.  Changing this
+# file changes ConverterID.MappingDigest; bump Version too.
+#
+list	org_type	CodeOrganisationType	other
+code	org_type	S	STATE	goaixm
+code	org_type	GS	STATE_GROUP	goaixm
+code	org_type	O	ORG	goaixm
+code	org_type	IO	INTL_ORG	goaixm
+code	org_type	AOA	ACFT_OPR	goaixm
+code	org_type	HA	HANDLING_AGENCY	goaixm
+code	org_type	A	NTL_AUTH	goaixm
+code	org_type	ATS	ATS	goaixm
+code	org_type	C	COMMERCIAL	goaixm
+code	org_type	OTHER	OTHER	goaixm
+#
+list	unit_type	CodeUnitType	other
+code	unit_type	ACC	ACC	goaixm
+code	unit_type	ADSU	ADSU	goaixm
+code	unit_type	ADVC	ADVC	goaixm
+code	unit_type	ALPS	ALPS	goaixm
+code	unit_type	AOF	AOF	goaixm
+code	unit_type	APP	APP	goaixm
+code	unit_type	APP-ARR	APP_ARR	goaixm
+code	unit_type	APP-DEP	APP_DEP	goaixm
+code	unit_type	ARO	ARO	goaixm
+code	unit_type	ATCC	ATCC	goaixm
+code	unit_type	ATFMU	ATFMU	goaixm
+code	unit_type	ATMU	ATMU	goaixm
+code	unit_type	ATSU	ATSU	goaixm
+code	unit_type	BOF	BOF	goaixm
+code	unit_type	BS	BS	goaixm
+code	unit_type	COM	COM	goaixm
+code	unit_type	FCST	FCST	goaixm
+code	unit_type	FIC	FIC	goaixm
+code	unit_type	GCA	GCA	goaixm
+code	unit_type	MET	MET	goaixm
+code	unit_type	MWO	MWO	goaixm
+code	unit_type	NOF	NOF	goaixm
+code	unit_type	OAC	OAC	goaixm
+code	unit_type	PAR	PAR	goaixm
+code	unit_type	RAD	RAD	goaixm
+code	unit_type	RAFC	RAFC	goaixm
+code	unit_type	RCC	RCC	goaixm
+code	unit_type	RSC	RSC	goaixm
+code	unit_type	SAR	SAR	goaixm
+code	unit_type	SMC	SMC	goaixm
+code	unit_type	SMR	SMR	goaixm
+code	unit_type	SRA	SRA	goaixm
+code	unit_type	SSR	SSR	goaixm
+code	unit_type	TAR	TAR	goaixm
+code	unit_type	TWR	TWR	goaixm
+code	unit_type	UAC	UAC	goaixm
+code	unit_type	UDF	UDF	goaixm
+code	unit_type	UIC	UIC	goaixm
+code	unit_type	VDF	VDF	goaixm
+code	unit_type	WAFC	WAFC	goaixm
+code	unit_type	ARTCC	ARTCC	goaixm
+code	unit_type	FSS	FSS	goaixm
+code	unit_type	TRACON	TRACON	goaixm
+code	unit_type	MIL	MIL	goaixm
+code	unit_type	MILOPS	MILOPS	goaixm
+code	unit_type	OTHER	OTHER	goaixm
+#
+list	dpn_type	CodeDesignatedPointType	other
+code	dpn_type	ICAO	ICAO	goaixm
+code	dpn_type	COORD	COORD	goaixm
+code	dpn_type	ADHP	TERMINAL	goaixm
+code	dpn_type	OTHER	OTHER	goaixm
+#
+list	vor_type	CodeVORType	other
+code	vor_type	VOR	VOR	goaixm
+code	vor_type	DVOR	DVOR	goaixm
+code	vor_type	VOT	VOT	goaixm
+code	vor_type	OTHER	OTHER	goaixm
+#
+list	north_ref	CodeNorthReferenceType	other
+code	north_ref	TRUE	TRUE	goaixm
+code	north_ref	MAG	MAG	goaixm
+code	north_ref	GRID	GRID	goaixm
+code	north_ref	OTHER	OTHER	goaixm
+#
+list	dme_type	CodeDMEType	other
+code	dme_type	N	NARROW	goaixm
+code	dme_type	P	PRECISION	goaixm
+code	dme_type	W	WIDE	goaixm
+code	dme_type	OTHER	OTHER	goaixm
+#
+list	ndb_class	CodeNDBUsageType	other
+code	ndb_class	B	ENR	goaixm
+code	ndb_class	L	L	goaixm
+code	ndb_class	M	MAR	goaixm
+code	ndb_class	OTHER	OTHER	goaixm
+#
+list	emission	CodeRadioEmissionType	other
+code	emission	A2	A2	goaixm
+code	emission	A3A	A3A	goaixm
+code	emission	A3B	A3B	goaixm
+code	emission	A3E	A3E	goaixm
+code	emission	A3H	A3H	goaixm
+code	emission	A3J	A3J	goaixm
+code	emission	A3L	A3L	goaixm
+code	emission	A3U	A3U	goaixm
+code	emission	J3E	J3E	goaixm
+code	emission	NONA1A	NONA1A	goaixm
+code	emission	NONA2A	NONA2A	goaixm
+code	emission	PON	PON	goaixm
+code	emission	A8W	A8W	goaixm
+code	emission	A9W	A9W	goaixm
+code	emission	NOX	NOX	goaixm
+code	emission	G1D	G1D	goaixm
+code	emission	OTHER	OTHER	goaixm
+#
+list	yes_no	CodeYesNoType	other
+code	yes_no	Y	YES	goaixm
+code	yes_no	N	NO	goaixm
+code	yes_no	OTHER	OTHER	goaixm
+#
+list	ahp_type	CodeAirportHeliportType	other
+code	ahp_type	AD	AD	goaixm
+code	ahp_type	AH	AH	goaixm
+code	ahp_type	HP	HP	goaixm
+code	ahp_type	LS	LS	goaixm
+code	ahp_type	OTHER	OTHER	goaixm
+#
+list	surface	CodeSurfaceCompositionType	other
+code	surface	ASPH	ASPH	goaixm
+code	surface	ASPH+GRASS	ASPH_GRASS	goaixm
+code	surface	BITUM	BITUM	goaixm
+code	surface	BRICK	BRICK	goaixm
+code	surface	CLAY	CLAY	goaixm
+code	surface	CONC	CONC	goaixm
+code	surface	CONC+ASPH	CONC_ASPH	goaixm
+code	surface	CONC+GRS	CONC_GRS	goaixm
+code	surface	CORAL	CORAL	goaixm
+code	surface	EARTH	EARTH	goaixm
+code	surface	GRASS	GRASS	goaixm
+code	surface	GRAVE	GRAVEL	goaixm
+code	surface	GRAVEL	GRAVEL	goaixm
+code	surface	ICE	ICE	goaixm
+code	surface	LATERITE	LATERITE	goaixm
+code	surface	MACADAM	MACADAM	goaixm
+code	surface	MATS	MATS	goaixm
+code	surface	MEMBRANE	MEMBRANE	goaixm
+code	surface	METAL	METAL	goaixm
+code	surface	SAND	SAND	goaixm
+code	surface	SNOW	SNOW	goaixm
+code	surface	STONE	STONE	goaixm
+code	surface	WATER	WATER	goaixm
+code	surface	WOOD	WOOD	goaixm
+code	surface	OTHER	OTHER	goaixm
+#
+list	pcn_pavement	CodePCNPavementType	other
+code	pcn_pavement	R	RIGID	goaixm
+code	pcn_pavement	F	FLEXIBLE	goaixm
+code	pcn_pavement	OTHER	OTHER	goaixm
+#
+list	pcn_subgrade	CodePCNSubgradeType	other
+code	pcn_subgrade	A	A	goaixm
+code	pcn_subgrade	B	B	goaixm
+code	pcn_subgrade	C	C	goaixm
+code	pcn_subgrade	D	D	goaixm
+code	pcn_subgrade	OTHER	OTHER	goaixm
+#
+list	pcn_tyre	CodePCNTyrePressureType	other
+code	pcn_tyre	W	W	goaixm
+code	pcn_tyre	X	X	goaixm
+code	pcn_tyre	Y	Y	goaixm
+code	pcn_tyre	Z	Z	goaixm
+code	pcn_tyre	OTHER	OTHER	goaixm
+#
+list	pcn_method	CodePCNMethodType	other
+code	pcn_method	T	TECH	goaixm
+code	pcn_method	U	ACFT	goaixm
+code	pcn_method	OTHER	OTHER	goaixm
+#
+# Units of measure
+list	uom_dist	UomDistanceType	closed
+code	uom_dist	NM	NM	goaixm
+code	uom_dist	KM	KM	goaixm
+code	uom_dist	M	M	goaixm
+code	uom_dist	FT	FT	goaixm
+code	uom_dist	MI	MI	goaixm
+code	uom_dist	CM	CM	goaixm
+#
+list	uom_distver	UomDistanceVerticalType	closed
+code	uom_distver	FT	FT	goaixm
+code	uom_distver	M	M	goaixm
+code	uom_distver	FL	FL	goaixm
+code	uom_distver	SM	SM	goaixm
+#
+list	uom_freq	UomFrequencyType	closed
+code	uom_freq	HZ	HZ	goaixm
+code	uom_freq	KHZ	KHZ	goaixm
+code	uom_freq	MHZ	MHZ	goaixm
+code	uom_freq	GHZ	GHZ	goaixm
+#
+list	uom_temp	UomTemperatureType	closed
+code	uom_temp	C	C	goaixm
+code	uom_temp	F	F	goaixm
+code	uom_temp	K	K	goaixm
