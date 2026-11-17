@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic AIXM 4.5 snapshot for goaixm's tests: fictional organisation,
+     aerodrome, navaids, points and obstacles; every designator, name and
+     coordinate is made up.  Released under the licence of goaixm. -->
+<AIXM-Snapshot xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="AIXM-Snapshot.xsd" version="4.5" origin="Example producer" created="2030-01-02T10:00:00.000+01:00" effective="2030-01-24T00:00:00.000+01:00">
+    <Org>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <codeId>XX</codeId>
+        <codeType>S</codeType>
+        <txtRmk>Fictional state.</txtRmk>
+    </Org>
+    <Ahp>
+        <AhpUid mid="200">
+            <codeId>XA01</codeId>
+        </AhpUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <txtName>EXAMPLE FIELD</txtName>
+        <codeIcao>XAAA</codeIcao>
+        <codeIata>XAA</codeIata>
+        <codeType>AD</codeType>
+        <geoLat>101500.00N</geoLat>
+        <geoLong>0201500.00E</geoLong>
+        <codeDatum>WGE</codeDatum>
+        <valElev>320</valElev>
+        <valElevAccuracy>1</valElevAccuracy>
+        <valGeoidUndulation>12.5</valGeoidUndulation>
+        <uomDistVer>FT</uomDistVer>
+        <valMagVar>-1.5</valMagVar>
+        <dateMagVar>2029</dateMagVar>
+        <valMagVarChg>0.1</valMagVarChg>
+        <valRefT>28</valRefT>
+        <uomRefT>C</uomRefT>
+        <txtNameCitySer>EXAMPLE TOWN</txtNameCitySer>
+        <txtNameAdmin>Example administration</txtNameAdmin>
+        <valTransitionAlt>5000</valTransitionAlt>
+        <uomTransitionAlt>FT</uomTransitionAlt>
+        <txtDescrRefPt>Centre of runway 09/27.</txtDescrRefPt>
+        <valCrc>0A1B2C3D</valCrc>
+        <Aht>
+            <codeWorkHr>H24</codeWorkHr>
+        </Aht>
+    </Ahp>
+    <Rwy>
+        <RwyUid mid="300">
+            <AhpUid mid="200">
+                <codeId>XA01</codeId>
+            </AhpUid>
+            <txtDesig>09/27</txtDesig>
+        </RwyUid>
+        <valLen>2400</valLen>
+        <valWid>45</valWid>
+        <uomDimRwy>M</uomDimRwy>
+        <codeComposition>CONC+ASPH</codeComposition>
+        <valPcnClass>50</valPcnClass>
+        <codePcnPavementType>F</codePcnPavementType>
+        <codePcnPavementSubgrade>B</codePcnPavementSubgrade>
+        <codePcnMaxTirePressure>X</codePcnMaxTirePressure>
+        <codePcnEvalMethod>T</codePcnEvalMethod>
+        <txtPcnNote>PCN 50/F/B/X/T</txtPcnNote>
+        <valLenStrip>2520</valLenStrip>
+        <valWidStrip>150</valWidStrip>
+        <uomDimStrip>M</uomDimStrip>
+    </Rwy>
+    <Rwy>
+        <RwyUid mid="301">
+            <AhpUid mid="200">
+                <codeId>XA01</codeId>
+            </AhpUid>
+            <txtDesig>18/36</txtDesig>
+        </RwyUid>
+        <valLen>abc</valLen>
+        <uomDimRwy>M</uomDimRwy>
+        <codeComposition>TURF</codeComposition>
+    </Rwy>
+    <Rdn>
+        <RdnUid mid="400">
+            <RwyUid mid="300">
+                <AhpUid mid="200">
+                    <codeId>XA01</codeId>
+                </AhpUid>
+                <txtDesig>09/27</txtDesig>
+            </RwyUid>
+            <txtDesig>09</txtDesig>
+        </RdnUid>
+        <geoLat>101500.00N</geoLat>
+        <geoLong>0201420.00E</geoLong>
+        <valTrueBrg>089.5</valTrueBrg>
+        <valMagBrg>091</valMagBrg>
+        <valElevTdz>310</valElevTdz>
+        <uomElevTdz>FT</uomElevTdz>
+        <codeTypeVasis>PAPI</codeTypeVasis>
+    </Rdn>
+    <Uni>
+        <UniUid mid="500">
+            <txtName>EXAMPLE TOWER</txtName>
+        </UniUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <AhpUid mid="200">
+            <codeId>XA01</codeId>
+        </AhpUid>
+        <codeType>TWR</codeType>
+        <codeClass>ICAO</codeClass>
+        <geoLat>1015.10N</geoLat>
+        <geoLong>02015.10E</geoLong>
+        <codeDatum>WGE</codeDatum>
+    </Uni>
+    <Uni>
+        <UniUid mid="501">
+            <txtName>EXAMPLE CENTRE</txtName>
+        </UniUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <codeType>ZZZ</codeType>
+        <codeClass>OTHER</codeClass>
+    </Uni>
+    <Dpn>
+        <DpnUid mid="600">
+            <codeId>ALPHA</codeId>
+            <geoLat>103000.00N</geoLat>
+            <geoLong>0203000.00E</geoLong>
+        </DpnUid>
+        <AhpUidAssoc mid="200">
+            <codeId>XA01</codeId>
+        </AhpUidAssoc>
+        <codeDatum>WGE</codeDatum>
+        <codeType>ICAO</codeType>
+        <txtName>ALPHA</txtName>
+        <txtRmk>Reporting point.</txtRmk>
+    </Dpn>
+    <Dpn>
+        <DpnUid mid="601">
+            <codeId>XA012</codeId>
+            <geoLat>10.25N</geoLat>
+            <geoLong>020.25E</geoLong>
+        </DpnUid>
+        <AhpUid mid="200">
+            <codeId>XA01</codeId>
+        </AhpUid>
+        <codeDatum>WGE</codeDatum>
+        <codeType>ADHP</codeType>
+        <txtName>XA012</txtName>
+    </Dpn>
+    <Dpn>
+        <DpnUid mid="602">
+            <codeId>BRAVOX</codeId>
+            <geoLat>104500.5S</geoLat>
+            <geoLong>0204500.5W</geoLong>
+        </DpnUid>
+        <AhpUidAssoc>
+            <codeId>XB99</codeId>
+        </AhpUidAssoc>
+        <codeDatum>WGE</codeDatum>
+        <codeType>OTHER</codeType>
+        <txtName>BRAVOX</txtName>
+    </Dpn>
+    <Dme>
+        <DmeUid mid="700">
+            <codeId>XAV</codeId>
+            <geoLat>101000.00N</geoLat>
+            <geoLong>0201000.00E</geoLong>
+        </DmeUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <VorUid mid="710">
+            <codeId>XAV</codeId>
+            <geoLat>101000N</geoLat>
+            <geoLong>0201000E</geoLong>
+        </VorUid>
+        <txtName>EXAMPLE VOR</txtName>
+        <codeChannel>87X</codeChannel>
+        <valGhostFreq>114.0</valGhostFreq>
+        <uomGhostFreq>MHZ</uomGhostFreq>
+        <codeDatum>WGE</codeDatum>
+        <valElev>300</valElev>
+        <uomDistVer>FT</uomDistVer>
+        <Dtt>
+            <codeWorkHr>H24</codeWorkHr>
+        </Dtt>
+    </Dme>
+    <Vor>
+        <VorUid mid="710">
+            <codeId>XAV</codeId>
+            <geoLat>101000.00N</geoLat>
+            <geoLong>0201000.00E</geoLong>
+        </VorUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <txtName>EXAMPLE VOR</txtName>
+        <codeType>DVOR</codeType>
+        <valFreq>114.0</valFreq>
+        <uomFreq>MHZ</uomFreq>
+        <codeTypeNorth>MAG</codeTypeNorth>
+        <valDeclination>-2</valDeclination>
+        <codeDatum>WGE</codeDatum>
+        <valElev>300</valElev>
+        <valGeoidUndulation>-3.5</valGeoidUndulation>
+        <uomDistVer>FT</uomDistVer>
+        <Vtt>
+            <codeWorkHr>H24</codeWorkHr>
+        </Vtt>
+    </Vor>
+    <Vor>
+        <VorUid mid="711">
+            <codeId>XCV</codeId>
+            <geoLat>110000.00N</geoLat>
+            <geoLong>0210000.00E</geoLong>
+        </VorUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <txtName>EXAMPLE NORTH</txtName>
+        <codeType>VOR</codeType>
+        <valFreq>112.5</valFreq>
+        <uomFreq>MHZ</uomFreq>
+        <codeTypeNorth>TRUE</codeTypeNorth>
+        <codeDatum>WGE</codeDatum>
+    </Vor>
+    <Tcn>
+        <TcnUid mid="720">
+            <codeId>XCV</codeId>
+            <geoLat>110000.00N</geoLat>
+            <geoLong>0210000.00E</geoLong>
+        </TcnUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <VorUid mid="711">
+            <codeId>XCV</codeId>
+            <geoLat>110000.00N</geoLat>
+            <geoLong>0210000.00E</geoLong>
+        </VorUid>
+        <txtName>EXAMPLE NORTH</txtName>
+        <codeChannel>72X</codeChannel>
+        <codeDatum>WGE</codeDatum>
+    </Tcn>
+    <Tcn>
+        <TcnUid mid="721">
+            <codeId>XT</codeId>
+            <geoLat>113000.00N</geoLat>
+            <geoLong>0213000.00E</geoLong>
+        </TcnUid>
+        <VorUid>
+            <codeId>XQV</codeId>
+            <geoLat>113000.00N</geoLat>
+            <geoLong>0213000.00E</geoLong>
+        </VorUid>
+        <codeChannel>99Y</codeChannel>
+        <valDeclination>1.0</valDeclination>
+        <codeDatum>WGE</codeDatum>
+    </Tcn>
+    <Dme>
+        <DmeUid mid="701">
+            <codeId>XD</codeId>
+            <geoLat>112000.00N</geoLat>
+            <geoLong>0212000.00E</geoLong>
+        </DmeUid>
+        <codeType>N</codeType>
+        <codeChannel>110Y</codeChannel>
+        <codeDatum>U</codeDatum>
+    </Dme>
+    <Ndb>
+        <NdbUid mid="730">
+            <codeId>XN</codeId>
+            <geoLat>102000.00N</geoLat>
+            <geoLong>0202000.00E</geoLong>
+        </NdbUid>
+        <OrgUid mid="100">
+            <txtName>EXAMPLE STATE</txtName>
+        </OrgUid>
+        <txtName>EXAMPLE NDB</txtName>
+        <valFreq>350</valFreq>
+        <uomFreq>KHZ</uomFreq>
+        <codeClass>L</codeClass>
+        <codeEm>A2A</codeEm>
+        <codeDatum>WGE</codeDatum>
+        <valElev>310</valElev>
+        <uomDistVer>FT</uomDistVer>
+        <Ntt>
+            <codeWorkHr>HO</codeWorkHr>
+        </Ntt>
+    </Ndb>
+    <Obs>
+        <ObsUid mid="800">
+            <geoLat>101230.50N</geoLat>
+            <geoLong>0201230.50E</geoLong>
+        </ObsUid>
+        <txtName>MAST 1</txtName>
+        <txtDescrType>Mast</txtDescrType>
+        <codeGroup>N</codeGroup>
+        <codeLgt>Y</codeLgt>
+        <txtDescrLgt>Red, flashing.</txtDescrLgt>
+        <codeDatum>WGE</codeDatum>
+        <valElev>650</valElev>
+        <valElevAccuracy>3</valElevAccuracy>
+        <valHgt>330</valHgt>
+        <uomDistVer>FT</uomDistVer>
+        <valGeoAccuracy>5</valGeoAccuracy>
+        <uomGeoAccuracy>M</uomGeoAccuracy>
+        <valCrc>11223344</valCrc>
+    </Obs>
+    <Obs>
+        <ObsUid mid="801">
+            <geoLat>1012.508333333N</geoLat>
+            <geoLong>02012.508333333E</geoLong>
+        </ObsUid>
+        <txtName>MAST 1</txtName>
+        <txtDescrType>Mast</txtDescrType>
+        <codeGroup>N</codeGroup>
+        <codeLgt>N</codeLgt>
+        <codeDatum>WGE</codeDatum>
+        <valElev>640</valElev>
+        <valHgt>320</valHgt>
+        <uomDistVer>FT</uomDistVer>
+    </Obs>
+    <Obs>
+        <ObsUid mid="802">
+            <geoLat>10.3N</geoLat>
+            <geoLong>020.3E</geoLong>
+        </ObsUid>
+        <txtName>WIND FARM 2</txtName>
+        <txtDescrType>Wind turbine</txtDescrType>
+        <codeGroup>Y</codeGroup>
+        <codeLgt>Y</codeLgt>
+        <codeDatum>U</codeDatum>
+        <valElev>900</valElev>
+        <valHgt>500</valHgt>
+        <uomDistVer>FT</uomDistVer>
+        <txtRmk>Group of 5.</txtRmk>
+    </Obs>
+    <Gbr>
+        <GbrUid mid="900">
+            <txtName>EXAMPLE BORDER</txtName>
+        </GbrUid>
+        <codeType>ST</codeType>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>END</codeType>
+            <geoLat>120000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+    </Gbr>
+    <Ase>
+        <AseUid mid="1000">
+            <codeType>CTR</codeType>
+            <codeId>XA01CTR</codeId>
+        </AseUid>
+        <txtName>EXAMPLE CTR</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>2500</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+    </Ase>
+    <Abd>
+        <AbdUid mid="1001">
+            <AseUid mid="1000">
+                <codeType>CTR</codeType>
+                <codeId>XA01CTR</codeId>
+            </AseUid>
+        </AbdUid>
+        <Circle>
+            <geoLatCen>101500.00N</geoLatCen>
+            <geoLongCen>0201500.00E</geoLongCen>
+            <codeDatum>WGE</codeDatum>
+            <valRadius>5</valRadius>
+            <uomRadius>NM</uomRadius>
+        </Circle>
+    </Abd>
+    <Ser>
+        <SerUid mid="1100">
+            <UniUid mid="500">
+                <txtName>EXAMPLE TOWER</txtName>
+            </UniUid>
+            <codeType>TWR</codeType>
+            <noSeq>1</noSeq>
+        </SerUid>
+    </Ser>
+</AIXM-Snapshot>
