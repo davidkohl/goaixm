@@ -140,3 +140,41 @@ func slicesEqual(a, b [][2]float64) bool {
 	}
 	return true
 }
+
+// BorderCutPoints: an explicit vertex off the border that is not snapped
+// keeps its place and is followed by its cut point on the border, so the
+// ring follows the border from there.
+func TestBorderCutPoints(t *testing.T) {
+	yb := 52 + 0.01*math.Sin(5)
+	near := [2]float64{-31.5, yb + 0.0001}
+	msg := borderMessage(t, airspaceXML("00000000-0000-0000-0000-0000000a0104", "CUT",
+		[]ringMember{{href: uuidSouth}, {coords: [][2]float64{{-30, 52}, {-31, 52.6}, near}}}))
+	a := goaixm.FeaturesOf[*aixm.Airspace](msg)[0]
+	ring := func(o geo.Options) [][2]float64 {
+		comps, err := o.AirspaceComponents(a, msg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return comps[0].Geometry.(geo.Polygon).Coordinates[0]
+	}
+	cut := [2]float64{-31.5, yb} // border position 5 (the nearest border point)
+	without := ring(geo.Options{BorderSnapTolerance: 25})
+	if contains(without, near) == false || len(without) == 0 {
+		t.Fatal("explicit vertex missing")
+	}
+	with := ring(geo.Options{BorderSnapTolerance: 25, BorderCutPoints: true})
+	i := slices.IndexFunc(with, func(p [2]float64) bool { return contains([][2]float64{p}, near) })
+	if i < 0 {
+		t.Fatal("explicit vertex missing with cut points")
+	}
+	prev, next := with[(i-1+len(with)-1)%(len(with)-1)], with[(i+1)%(len(with)-1)]
+	onBorder := func(p [2]float64) bool {
+		return geo.GeodesicDistance(p[1], p[0], cut[1], cut[0]) < 2 && !contains([][2]float64{p}, near)
+	}
+	if !onBorder(prev) && !onBorder(next) {
+		t.Errorf("no cut point next to the explicit vertex: %v %v %v", prev, with[i], next)
+	}
+	if len(with) != len(without)+1 {
+		t.Errorf("%d positions with cut points, %d without", len(with), len(without))
+	}
+}

@@ -66,6 +66,14 @@ type Options struct {
 	// self-intersects there.  Every snap is reported to OnRepair.  0: off.
 	BorderSnapTolerance float64
 
+	// BorderCutPoints inserts, where a ring leaves or joins a referenced
+	// GeoBorder at an explicit position of the neighbouring curve that is
+	// off the border (and not snapped), the cut point (the position's
+	// nearest point on the border polyline) next to it, so that the ring
+	// follows the border from the cut point instead of running straight
+	// from the explicit position to the next border vertex.
+	BorderCutPoints bool
+
 	// LegacySnapAfterDensify reproduces the snap of DensifyVersion 1 (only
 	// the end position moved, after densification; the densified positions
 	// of the end piece still lead to the source vertex), so that geometry

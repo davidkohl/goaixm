@@ -174,7 +174,7 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 	if cv.opt.BorderSnapTolerance > 0 {
 		snapJunctions(members, cv)
 	}
-	trimBorders(members)
+	trimBorders(members, cv.opt.BorderCutPoints)
 	coords := joinMembers(members, warn, cv)
 	if len(coords) == 0 {
 		return nil, fmt.Errorf("geojson: Ring has no coordinates")
@@ -350,7 +350,7 @@ func crossesBefore(q, p [2]float64, line [][2]float64) bool {
 //
 // The borders are trimmed against their untrimmed neighbours, so the result
 // does not depend on the order in which members are processed.
-func trimBorders(members []ringMember) {
+func trimBorders(members []ringMember, cutPoints bool) {
 	n := len(members)
 	if n < 2 {
 		return
@@ -365,7 +365,7 @@ func trimBorders(members []ringMember) {
 		prev, next := members[(i-1+n)%n], members[(i+1)%n]
 		from := attach(m.coords, prev, false)
 		to := attach(m.coords, next, true)
-		trimmed[i] = cutBorder(m.coords, from, to)
+		trimmed[i] = cutBorder(m.coords, from, to, cutPoints)
 	}
 	for i := range members {
 		members[i].coords = trimmed[i]
@@ -377,6 +377,9 @@ func trimBorders(members []ringMember) {
 type borderCut struct {
 	s float64
 	p [2]float64
+	// explicit: p is the neighbouring curve's own position, which need
+	// not lie on the border (else p is a border position).
+	explicit bool
 }
 
 // attach returns where the neighbouring member nb attaches to border: the
@@ -385,9 +388,9 @@ type borderCut struct {
 func attach(border [][2]float64, nb ringMember, following bool) borderCut {
 	if len(nb.coords) == 0 {
 		if following {
-			return borderCut{float64(len(border) - 1), border[len(border)-1]}
+			return borderCut{s: float64(len(border) - 1), p: border[len(border)-1]}
 		}
-		return borderCut{0, border[0]}
+		return borderCut{s: 0, p: border[0]}
 	}
 	if !nb.isBorder {
 		p := nb.coords[len(nb.coords)-1]
@@ -396,10 +399,10 @@ func attach(border [][2]float64, nb ringMember, following bool) borderCut {
 		}
 		// The neighbour's own position is kept, so that the join is exact;
 		// only its place along the border is needed.
-		return borderCut{project(border, p), p}
+		return borderCut{project(border, p), p, true}
 	}
 	j := junctionIndex(border, nb.coords)
-	return borderCut{float64(j), border[j]}
+	return borderCut{s: float64(j), p: border[j]}
 }
 
 // junctionIndex returns the index of the position of border b at which it
@@ -447,9 +450,22 @@ func project(border [][2]float64, p [2]float64) float64 {
 
 // cutBorder returns the stretch of border from one cut to the other: the
 // cut positions and the border vertices strictly between them, reversed when
-// the ring travels against the border's own direction.
-func cutBorder(border [][2]float64, from, to borderCut) [][2]float64 {
-	out := [][2]float64{from.p}
+// the ring travels against the border's own direction.  With cutPoints, an
+// explicit neighbour position off the border is followed (preceded) by its
+// cut point on the border, so the ring leaves (joins) the border there
+// instead of cutting the corner to the next border vertex.
+func cutBorder(border [][2]float64, from, to borderCut, cutPoints bool) [][2]float64 {
+	cut := func(c borderCut) [][2]float64 {
+		if !cutPoints || !c.explicit {
+			return nil
+		}
+		q := borderPoint(border, c.s)
+		if GeodesicDistance(c.p[1], c.p[0], q[1], q[0]) < minCutDistance {
+			return nil
+		}
+		return [][2]float64{q}
+	}
+	out := appendDedup([][2]float64{from.p}, cut(from))
 	if from.s <= to.s {
 		for k := int(math.Floor(from.s)) + 1; float64(k) < to.s; k++ {
 			out = appendDedup(out, border[k:k+1])
@@ -459,8 +475,13 @@ func cutBorder(border [][2]float64, from, to borderCut) [][2]float64 {
 			out = appendDedup(out, border[k:k+1])
 		}
 	}
+	out = appendDedup(out, cut(to))
 	return appendDedup(out, [][2]float64{to.p})
 }
+
+// minCutDistance, in metres: an explicit position nearer the border than
+// this is on it (no cut point is inserted).
+const minCutDistance = 0.001
 
 // joinMembers concatenates the members end to end.  A member that, after the
 // previous one, connects by its end rather than its start is reversed.  Joins
