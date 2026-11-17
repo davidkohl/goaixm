@@ -233,6 +233,41 @@ plain reader copy a document that needs conversion to `Options.SpoolDir`
 first. Native 5.1.1 input is never copied and decodes exactly as without
 converters.
 
+### AIXM 4.5
+
+Package `aixm45` reads AIXM 4.5 snapshots: `Stream`/`Reader` yield one
+top-level element at a time as an `xmlnode` tree, `Key` gives the canonical
+natural key of a `…Uid` element (`Rdn(RwyUid(AhpUid(codeId=XA01);txtDesig=09/27);txtDesig=27)`),
+`ParseLat`/`ParseLong` parse the 4.5 coordinate layouts exactly, and typed
+views (`NewAhp`, `NewDpn`, `NewVor`, …) name the values of the common
+entities while keeping their source nodes.
+
+Package `convert/aixm45to51` is a `convert.Converter` from 4.5 to 5.1.1:
+
+```go
+reg := convert.NewRegistry(aixm45to51.New(aixm45to51.Config{
+	Namespace: myNamespace, // one fixed UUID per data originator
+}))
+msg, err := goaixm.ParseFile(ctx, "snapshot45.xml", goaixm.Options{Converters: reg})
+```
+
+- Coverage: `Org`, `Uni`, `Dpn`, `Vor`/`Dme`/`Ndb`/`Tcn` (plus the `Navaid`
+  derived from `VorUid` collocation), `Obs`, `Ahp`, `Rwy`, `Rdn`. Airspaces
+  and borders and all other kinds are reported as unmapped and dropped.
+- Identity: UUIDv5 over the natural key in the caller's namespace;
+  references are computed from the referencing `…Uid`; duplicate keys get
+  `#2`, `#3`, … and a `duplicate_key` warning.
+- One BASELINE time slice per feature from the snapshot's `effective`.
+- Coordinates on another datum than WGS-84 are carried untransformed,
+  flagged with a WARNING note and reported per feature.
+- The rules are data: `mapping.tsv` (rule id, source, target, outcome,
+  reference) and `codes.tsv`, hashed into `ConverterID.MappingDigest`. They
+  are goaixm's own proposal ("goaixm" in the reference column) until
+  reconciled with the official EUROCONTROL 4.5 to 5.1 mapping.
+- Tests check every emitted code and unit against the vendored 5.1.1
+  schema, the property order against its sequences, and a golden report
+  (`testdata/aixm45/*.report.json`, `go test -update`).
+
 ## Validation
 
 ```go
@@ -262,6 +297,8 @@ for _, e := range airport.TimeSlice[0].Extension {
 | `.` (package `goaixm`) | `Parse`, `Stream`, `ParseSource`, `StreamSource`, `Registry`, `Message`, `Member`, `MemberSink` |
 | `version/` | AIXM versions and document version detection |
 | `convert/` | Converter interface, registry, chains, reports, `XMLWriter` |
+| `convert/aixm45to51/` | The AIXM 4.5 to 5.1.1 converter and its mapping tables |
+| `aixm45/` | AIXM 4.5 reader, natural keys, coordinates, typed views |
 | `aixm/` | The AIXM 5.1.1 model; `*_gen.go` are generated |
 | `gml/` | The GML 3.2.1 subset AIXM uses |
 | `geo/` | Coordinates, geodesic arcs, GeoJSON |
@@ -279,6 +316,9 @@ go generate ./...             # regenerate aixm/*_gen.go from tools/xsd
 go vet ./... && go test ./...
 go test -fuzz=FuzzParse -fuzztime=30s .
 go test -fuzz=FuzzDetect -fuzztime=30s ./version
+go test -fuzz=FuzzStream -fuzztime=30s ./aixm45
+go test -fuzz=FuzzCoordinate -fuzztime=30s ./aixm45
+go test -fuzz=FuzzConvert -fuzztime=30s ./convert/aixm45to51
 ```
 
 `internal/testconv` holds a namespace-relabelling converter used only by
@@ -286,7 +326,9 @@ the tests to exercise the conversion framework; it is not a real version
 conversion.
 
 Tests use the EUROCONTROL [DONLON](https://github.com/aixm/donlon)
-reference data and skip when the submodule is missing. CI also checks gofmt,
+reference data and skip when the submodule is missing. The AIXM 4.5 tests
+use small synthetic, hand-written fixtures in `testdata/aixm45/` (fictional
+designators and coordinates). CI also checks gofmt,
 staticcheck and that the generated code is up to date.
 
 ## Limitations
