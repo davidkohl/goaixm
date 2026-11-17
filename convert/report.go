@@ -99,8 +99,8 @@ type OutputInfo struct {
 
 // KindStats accounts for the source elements of one kind.
 //
-// Invariants (Report.Check): In == Out + Merged + Dropped, and Leaves equals
-// the sum of all element outcomes.
+// Invariants (Report.Check): In == Out + Merged + Dropped, and Leaves +
+// Defaults equals the sum of all element outcomes.
 type KindStats struct {
 	// In counts the source elements of this kind.
 	In int `json:"in"`
@@ -112,6 +112,10 @@ type KindStats struct {
 	Dropped int `json:"dropped"`
 	// Leaves counts the source leaves visited (see WalkLeaves).
 	Leaves int `json:"leaves"`
+	// Defaults counts target values supplied without any source leaf
+	// (recorded with Default, outcome Defaulted), e.g. a feature lifetime
+	// the source version does not carry.
+	Defaults int `json:"defaults,omitempty"`
 	// Elements holds the outcomes by source path, e.g. "Ase/valDistVerUpper"
 	// or "Avx[codeType=RHL]".
 	Elements map[string]*ElementStats `json:"elements"`
@@ -187,6 +191,15 @@ func (k *KindStats) Record(path string, o Outcome, rule, target string, sample *
 	if sample != nil && len(e.Samples) < MaxSamples {
 		e.Samples = append(e.Samples, *sample)
 	}
+}
+
+// Default records a target value supplied without a source leaf: outcome
+// Defaulted at path (by convention "Kind/(target)"), counted in Defaults so
+// the accounting still holds.  Use Record with Defaulted instead when a
+// source leaf exists but its value was replaced by a default.
+func (k *KindStats) Default(path, rule, target string) {
+	k.Defaults++
+	k.Record(path, Defaulted, rule, target, nil)
 }
 
 // AddIssue records an issue.  Equal issues (code, severity, kind, key,
@@ -278,7 +291,8 @@ func (r *Report) IssueCount(sev Severity) int {
 var ErrAccounting = errors.New("convert: report accounting violated")
 
 // Check verifies the accounting of the report and its steps: for every
-// kind In == Out + Merged + Dropped and Leaves == sum of outcomes; the
+// kind In == Out + Merged + Dropped and Leaves + Defaults == sum of
+// outcomes; the
 // output record count equals the sum of Targets.
 func (r *Report) Check() error {
 	var errs []error
@@ -298,8 +312,8 @@ func (r *Report) Check() error {
 				sum += c
 			}
 		}
-		if sum != k.Leaves {
-			errs = append(errs, fmt.Errorf("%w: kind %s: %d leaves, %d outcomes", ErrAccounting, n, k.Leaves, sum))
+		if sum != k.Leaves+k.Defaults {
+			errs = append(errs, fmt.Errorf("%w: kind %s: %d leaves + %d defaults, %d outcomes", ErrAccounting, n, k.Leaves, k.Defaults, sum))
 		}
 	}
 	t := 0

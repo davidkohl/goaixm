@@ -171,6 +171,16 @@ func TestAccountingViolation(t *testing.T) {
 	if err := r.Check(); err != nil {
 		t.Errorf("valid report rejected: %v", err)
 	}
+	// A defaulted target value has no source leaf: Default keeps the
+	// accounting balanced, Record with Defaulted alone does not.
+	k.Default("X/(featureLifetime)", "r", "X/featureLifetime")
+	if err := r.Check(); err != nil || k.Defaults != 1 || r.Count(convert.Defaulted) != 1 {
+		t.Errorf("Default: defaults %d, err %v", k.Defaults, err)
+	}
+	k.Record("X/y", convert.Defaulted, "r", "", nil)
+	if err := r.Check(); !errors.Is(err, convert.ErrAccounting) {
+		t.Errorf("outcome without leaf or default not caught: %v", err)
+	}
 }
 
 func TestRunVersionMismatch(t *testing.T) {
