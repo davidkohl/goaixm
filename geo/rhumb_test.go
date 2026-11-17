@@ -51,6 +51,7 @@ func TestRhumbPositionIndependent(t *testing.T) {
 				break
 			}
 		}
+		t.Logf("t=%.2f: %.4f m from the integrated rhumb line", frac, best)
 		if best > 0.05 {
 			t.Errorf("t=%.2f: %.3f m from the integrated rhumb line", frac, best)
 		}
@@ -88,6 +89,7 @@ func TestRhumbLineParallel(t *testing.T) {
 		}
 		worst = math.Max(worst, sphericalParallelDeviation(10.5, all[i][0]-all[i-1][0], r))
 	}
+	t.Logf("%d positions inserted, worst piece %.4f m (spherical model)", len(pts), worst)
 	if worst > tol*1.01 {
 		t.Errorf("worst piece deviates %.3f m (tolerance %.1f m)", worst, tol)
 	}
