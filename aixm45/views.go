@@ -115,6 +115,8 @@ type Dpn struct {
 	// AhpAssoc is AhpUidAssoc, the associated aerodrome; Ahp is an AhpUid
 	// child, which some producers write instead.
 	AhpAssoc, Ahp Ref
+	// GeoAccuracy is valGeoAccuracy, GeoAccuracyUom uomGeoAccuracy.
+	GeoAccuracy, GeoAccuracyUom Value
 }
 
 // NewDpn returns the view of a Dpn element.
@@ -124,6 +126,7 @@ func NewDpn(n *xmlnode.Node) Dpn {
 		Position: Position{Lat: val(n, "DpnUid/geoLat"), Long: val(n, "DpnUid/geoLong"), Datum: val(n, "codeDatum")},
 		CodeType: val(n, "codeType"), Name: val(n, "txtName"),
 		AhpAssoc: ref(n, "AhpUidAssoc"), Ahp: ref(n, "AhpUid"),
+		GeoAccuracy: val(n, "valGeoAccuracy"), GeoAccuracyUom: val(n, "uomGeoAccuracy"),
 	}
 }
 
@@ -138,6 +141,8 @@ type Equipment struct {
 	Name      Value
 	// MagVar is valMagVar, MagVarDate dateMagVar.
 	MagVar, MagVarDate Value
+	// GeoAccuracy is valGeoAccuracy, GeoAccuracyUom uomGeoAccuracy.
+	GeoAccuracy, GeoAccuracyUom Value
 }
 
 func equipment(n *xmlnode.Node, uid string) Equipment {
@@ -146,6 +151,7 @@ func equipment(n *xmlnode.Node, uid string) Equipment {
 		Position:  Position{Lat: val(n, uid+"/geoLat"), Long: val(n, uid+"/geoLong"), Datum: val(n, "codeDatum")},
 		Elevation: elevation(n), Org: ref(n, "OrgUid"), Name: val(n, "txtName"),
 		MagVar: val(n, "valMagVar"), MagVarDate: val(n, "dateMagVar"),
+		GeoAccuracy: val(n, "valGeoAccuracy"), GeoAccuracyUom: val(n, "uomGeoAccuracy"),
 	}
 }
 
@@ -233,6 +239,7 @@ type Ahp struct {
 	TransitionAlt, TransitionAltUom               Value
 	NameCityServed, NameAdmin                     Value // txtNameCitySer, txtNameAdmin
 	DescrRefPoint, DescrSite, DescrAltimeterCheck Value // txtDescrRefPt, txtDescrSite, txtDescrAcl
+	GeoAccuracy, GeoAccuracyUom                   Value // valGeoAccuracy, uomGeoAccuracy
 }
 
 // NewAhp returns the view of an Ahp element.
@@ -247,6 +254,7 @@ func NewAhp(n *xmlnode.Node) Ahp {
 		TransitionAlt: val(n, "valTransitionAlt"), TransitionAltUom: val(n, "uomTransitionAlt"),
 		NameCityServed: val(n, "txtNameCitySer"), NameAdmin: val(n, "txtNameAdmin"),
 		DescrRefPoint: val(n, "txtDescrRefPt"), DescrSite: val(n, "txtDescrSite"), DescrAltimeterCheck: val(n, "txtDescrAcl"),
+		GeoAccuracy: val(n, "valGeoAccuracy"), GeoAccuracyUom: val(n, "uomGeoAccuracy"),
 	}
 }
 
