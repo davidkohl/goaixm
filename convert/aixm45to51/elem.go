@@ -343,6 +343,7 @@ func (e *elem) equipment(f *feature, eq aixm45.Equipment) equipInfo {
 	e.num(p, "magneticVariation", eq.MagVar, "NAV-MAGVAR", ntMagVar)
 	e.num(p, "dateMagneticVariation", eq.MagVarDate, "NAV-MAGVARDATE", ntYear)
 	if pp := e.position(f, eq.Position, "NAV-POS"); pp != nil {
+		e.measure(pp, "horizontalAccuracy", eq.GeoAccuracy, eq.GeoAccuracyUom, "GEO-HACC", ntDistance, "uom_dist")
 		e.elevation(pp, eq.Elevation)
 		info.location = pp
 		p.add("location", wrap("location", point(pp, true)))
@@ -385,6 +386,10 @@ func (e *elem) navaid(typ string, info equipInfo, others []member) error {
 	}
 	for _, u := range comps {
 		cp := f.newProps()
+		if len(comps) > 1 {
+			// Collocated equipment share one collocation group.
+			cp.add("collocationGroup", el("collocationGroup", "1"))
+		}
 		cp.add("theNavaidEquipment", href("theNavaidEquipment", u))
 		p.add("navaidEquipment", wrap("navaidEquipment", cp.object("NavaidComponent", "nc", orderComponent)))
 	}

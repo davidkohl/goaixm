@@ -270,17 +270,20 @@ func arcAngles(c, p, q [2]float64, clockwise bool) (start, end float64, ok bool)
 	return s, s - sw, sw > 0
 }
 
+// snapReport is the smallest arc-end snap (metres) reported as an issue.
+const snapReport = 0.01
+
 // arcTolerance is the radius check: max(20 m, 0.5 % of the radius).
 func arcTolerance(r float64) float64 { return math.Max(20, 0.005*r) }
 
 // geomIssue records an issue of an airspace's geometry.
 type geomIssue func(code string, sev convert.Severity, msg string)
 
-// buildRing plans the ring of a boundary.  Vertex i and the curve from it
-// to vertex i+1 (the last to the first) become segments of one closed
-// ring: consecutive straight pieces (GRC, RHL densified, FNT inline)
-// share one gml:GeodesicString.
-func (r *run) buildRing(b *boundary, issue geomIssue) *ring {
+// buildRing plans the ring of a boundary, writing border stretches as
+// mode says.  Vertex i and the curve from it to vertex i+1 (the last to
+// the first) become segments of one closed ring: consecutive straight
+// pieces (GRC, RHL densified, FNT inline) share one gml:GeodesicString.
+func (r *run) buildRing(b *boundary, mode BorderMode, issue geomIssue) *ring {
 	rg := &ring{status: make([]vstat, len(b.vx)), remarks: b.remarks}
 	datum := func(st *vstat, d string) {
 		switch d {
@@ -385,10 +388,19 @@ func (r *run) buildRing(b *boundary, issue geomIssue) *ring {
 			snap((k+1)%len(idx), at(b.vx[i], plans[k].end), arcTolerance(b.vx[i].radius))
 		}
 	}
+	nSnap, maxSnap := 0, 0.0
 	for k, i := range idx {
 		if snapped[k] > 0 {
 			rg.status[i].pos, rg.status[i].posNote = convert.Lossy, fmt.Sprintf("replaced by the computed arc end %.3f m away", snapped[k])
+			nSnap++
+			maxSnap = math.Max(maxSnap, snapped[k])
 		}
+	}
+	if maxSnap >= snapReport {
+		// Reported, not silent: the arc's radius and the source vertices
+		// disagree by up to maxSnap (within the arc tolerance).  Below 1 cm
+		// it is rounding (the report still has each as lossy).
+		issue("arc_end_snapped", convert.Info, fmt.Sprintf("%d boundary vertices next to arcs replaced by the computed arc ends (up to %.2f m away): radius and vertices disagree within the arc tolerance", nSnap, maxSnap))
 	}
 	g := &geodesic{r: rg}
 	arcs := 0
@@ -477,13 +489,13 @@ func (r *run) buildRing(b *boundary, issue geomIssue) *ring {
 			if s.Closed {
 				issue("border_ambiguous", convert.Warning, fmt.Sprintf("boundary vertex %d: border %s is closed: the shorter way round was taken", i+1, v.gbr))
 			}
-			if r.cfg.BorderMode == Reference && !s.Closed {
+			if mode == Reference && !s.Closed {
 				g.add(v.p.text)
 				g.flush()
 				rg.segs = append(rg.segs, seg{kind: segBorder, border: v.gbr})
 				break
 			}
-			if r.cfg.BorderMode == Reference {
+			if mode == Reference {
 				issue("border_inline", convert.Info, fmt.Sprintf("boundary vertex %d: closed border %s written inline", i+1, v.gbr))
 			}
 			g.add(v.p.text)
@@ -557,7 +569,7 @@ func (r *run) finishDatum(rg *ring, issue geomIssue) {
 	}
 }
 
-// surface renders the horizontal projection of a ring.
+// surface renders the horizontal projection of a ring as an aixm:Surface.
 func (r *run) surface(f *feature, rg *ring) string {
 	var b strings.Builder
 	b.WriteString(`<aixm:Surface gml:id="` + f.id("sfc") + `" srsName="` + srs4326 + `"><gml:patches><gml:PolygonPatch><gml:exterior><gml:Ring>`)

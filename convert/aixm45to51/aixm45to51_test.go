@@ -454,7 +454,7 @@ func TestGoaixmOptions(t *testing.T) {
 func TestRulesUsed(t *testing.T) {
 	policy := map[string]bool{"ID-KEY": true, "TS-SEQ": true, "NAV-NAVAID": true, "GEN-VALUE": true, "GEN-CODE": true, "ASE-GEOM": true}
 	used := map[string]bool{}
-	for _, f := range []string{"basic.xml", "edge.xml", "airspace.xml"} {
+	for _, f := range []string{"basic.xml", "edge.xml", "airspace.xml", "donlon.xml"} {
 		res := convertBytes(t, fixture(t, f), aixm45to51.Config{})
 		for _, k := range res.rep.Kinds {
 			for _, e := range k.Elements {
@@ -472,11 +472,11 @@ func TestRulesUsed(t *testing.T) {
 	}
 }
 
-// TestGoldenReport compares the reports of basic.xml and airspace.xml
-// with testdata/aixm45/*.report.json (go test -update rewrites them).  The
-// module version is not part of the comparison.
+// TestGoldenReport compares the reports of basic.xml, airspace.xml and
+// donlon.xml with testdata/aixm45/*.report.json (go test -update rewrites
+// them).  The module version is not part of the comparison.
 func TestGoldenReport(t *testing.T) {
-	for _, name := range []string{"basic", "airspace"} {
+	for _, name := range []string{"basic", "airspace", "donlon"} {
 		res := convertBytes(t, fixture(t, name+".xml"), aixm45to51.Config{})
 		res.rep.Converter.Module = ""
 		got, err := json.MarshalIndent(res.rep, "", "  ")

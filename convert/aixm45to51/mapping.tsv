@@ -63,7 +63,7 @@ NAV-POS	Vor|Dme|Ndb|Tcn/…Uid/geoLat, geoLong	…/location/ElevatedPoint (and N
 NAV-ORG	Vor|Dme|Ndb|Tcn/OrgUid	…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority	derived	goaixm	role (type) not written
 NAV-MAGVAR	Vor|Dme|Ndb|Tcn/valMagVar	…/magneticVariation	mapped	goaixm
 NAV-MAGVARDATE	Vor|Dme|Ndb|Tcn/dateMagVar	…/dateMagneticVariation	mapped	goaixm
-NAV-NAVAID	(collocation)	Navaid (type, navaidEquipment/NavaidComponent)	derived	goaixm	one Navaid per Vor (VOR, VOR_DME with a Dme/VorUid, VORTAC with a Tcn/VorUid), per Ndb (NDB), per uncollocated Dme (DME) and Tcn (TACAN); emitted after its primary equipment
+NAV-NAVAID	(collocation)	Navaid (type, navaidEquipment/NavaidComponent)	derived	goaixm	one Navaid per Vor (VOR, VOR_DME with a Dme/VorUid, VORTAC with a Tcn/VorUid), per Ndb (NDB), per uncollocated Dme (DME) and Tcn (TACAN); emitted after its primary equipment; collocated equipment share collocationGroup 1
 VOR-TYPE	Vor/codeType	VOR/type	mapped	goaixm	codes vor_type
 VOR-FREQ	Vor/valFreq + uomFreq	VOR/frequency	mapped	goaixm
 VOR-NORTH	Vor/codeTypeNorth	VOR/zeroBearingDirection	mapped	goaixm	codes north_ref

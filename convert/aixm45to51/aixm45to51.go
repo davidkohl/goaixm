@@ -42,7 +42,11 @@
 // convention (see geo), Abd/Circle as gml:CircleByCenterPoint, and border
 // stretches (FNT) cut with geo.BorderStretch and written inline or as a
 // GeoBorder reference (Config.BorderMode).  The source ring orientation is
-// kept.
+// kept.  A vertex next to an arc that lies within the arc tolerance of the
+// arc's computed end is written as that end (arc_end_snapped); farther
+// ones are kept (arc_radius_mismatch).  Config.RingCheck checks every ring
+// as a consumer computes it and reports invalid ones (ring_invalid).
+// Geometry problems of the source are reported, never repaired.
 //
 // The report accounts for every source leaf: each attribute and each
 // element text of every top-level element (and of the root) gets exactly
@@ -62,6 +66,7 @@ import (
 
 	"github.com/davidkohl/goaixm/aixm45"
 	"github.com/davidkohl/goaixm/convert"
+	"github.com/davidkohl/goaixm/geo"
 	"github.com/davidkohl/goaixm/version"
 	"github.com/davidkohl/goaixm/xmlnode"
 )
@@ -70,7 +75,7 @@ import (
 // bumped on every rule change.
 const (
 	Name    = "goaixm/aixm45to51"
-	Version = "0.2.0"
+	Version = "0.3.0"
 )
 
 // Config configures a Converter.
@@ -101,6 +106,15 @@ type Config struct {
 	// which a vertex of a border-following boundary is reported
 	// (border_far); default 100.
 	BorderTolerance float64
+	// RingCheck, when set, checks every horizontal projection written for
+	// a boundary (Abd) as a consumer sees it: turned into positions by geo
+	// with these options (border stretches inline) and tested as a simple
+	// polygon ring in the lon/lat plane.  A ring that crosses or touches
+	// itself or doubles back on itself is reported (ring_invalid warning,
+	// with the place and the nearest boundary vertex); the geometry is
+	// written unchanged.  Nil: no check.  geo.Options{ArcTolerance: 1,
+	// GeodesicTolerance: 1} checks at metre resolution.
+	RingCheck *geo.Options
 }
 
 // Errors of Convert.

@@ -1,0 +1,1792 @@
+{
+  "format": 1,
+  "converter": {
+    "name": "goaixm/aixm45to51",
+    "version": "0.3.0",
+    "mappingDigest": "346f477b5bfbef0baf598c77fd1acd0c0ec14d3df3555ca0c67fbde5884b81a4",
+    "module": ""
+  },
+  "from": "4.5",
+  "to": "5.1.1",
+  "source": {
+    "name": "in.xml",
+    "bytes": 212670,
+    "sha256": "65db790e0d89a354bc0309639e5d03a552605570d2108f8c272f3d6cb6e92fda",
+    "version": "4.5",
+    "root": "AIXM-Snapshot",
+    "attrs": {
+      "created": "2017-06-01T00:00:00.000Z",
+      "effective": "2017-07-01T00:00:00Z",
+      "noNamespaceSchemaLocation": "AIXM-Snapshot.xsd",
+      "origin": "DONLON transcription",
+      "version": "4.5"
+    }
+  },
+  "output": {
+    "records": 83,
+    "bytes": 180781,
+    "sha256": "a7c6cdf7866a8edafccd1aba2a4a14e4216f2161d9ba964b42b40e5b45857c8f"
+  },
+  "kinds": {
+    "AIXM-Snapshot": {
+      "in": 1,
+      "out": 0,
+      "merged": 1,
+      "dropped": 0,
+      "leaves": 5,
+      "elements": {
+        "AIXM-Snapshot/@created": {
+          "target": "AIXMBasicMessage header comment (convert.Header.Attrs)",
+          "rule": "HDR-ATTR",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@effective": {
+          "target": "*TimeSlice/validTime/TimePeriod/beginPosition; */featureLifetime/TimePeriod/beginPosition",
+          "rule": "HDR-EFF",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@noNamespaceSchemaLocation": {
+          "target": "-",
+          "rule": "HDR-OTHER",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "value": "AIXM-Snapshot.xsd"
+            }
+          ]
+        },
+        "AIXM-Snapshot/@origin": {
+          "target": "AIXMBasicMessage header comment (convert.Header.Attrs)",
+          "rule": "HDR-ATTR",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@version": {
+          "target": "AIXMBasicMessage (AIXM 5.1.1)",
+          "rule": "HDR-VER",
+          "outcomes": {
+            "derived": 1
+          },
+          "samples": [
+            {
+              "value": "4.5"
+            }
+          ]
+        }
+      }
+    },
+    "Abd": {
+      "in": 16,
+      "out": 0,
+      "merged": 16,
+      "dropped": 0,
+      "leaves": 280,
+      "elements": {
+        "Abd/AbdUid/AseUid/codeId": {
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
+          "outcomes": {
+            "derived": 16
+          }
+        },
+        "Abd/AbdUid/AseUid/codeType": {
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
+          "outcomes": {
+            "derived": 16
+          }
+        },
+        "Abd/Avx[codeType=CWA]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/codeType": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=EAR1;codeType=R))",
+              "value": "55.2311637281N",
+              "note": "replaced by the computed arc end 0.000 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/geoLatArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=EAR1;codeType=R))",
+              "value": "036.8943733792W",
+              "note": "replaced by the computed arc end 0.000 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/geoLongArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/uomRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/valRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=FNT]/GbrUid/txtName": {
+          "target": "border stretch from vertex i to vertex i+1 (geo.BorderStretch)",
+          "rule": "AVX-FNT",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Abd/Avx[codeType=FNT]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=FNT]/codeType": {
+          "target": "border stretch from vertex i to vertex i+1 (geo.BorderStretch)",
+          "rule": "AVX-FNT",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Abd/Avx[codeType=FNT]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=FNT]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=GRC]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 50
+          }
+        },
+        "Abd/Avx[codeType=GRC]/codeType": {
+          "target": "gml:GeodesicString",
+          "rule": "AVX-GRC",
+          "outcomes": {
+            "mapped": 50
+          }
+        },
+        "Abd/Avx[codeType=GRC]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 49
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=EAR1;codeType=R))",
+              "value": "54.9281635053N",
+              "note": "replaced by the computed arc end 0.000 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 49
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=EAR1;codeType=R))",
+              "value": "035.67411607W",
+              "note": "replaced by the computed arc end 0.000 m away"
+            }
+          ]
+        },
+        "Abd/Circle/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Abd/Circle/geoLatCen": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Abd/Circle/geoLongCen": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Abd/Circle/uomRadius": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Abd/Circle/valRadius": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 7
+          }
+        }
+      }
+    },
+    "Adg": {
+      "in": 2,
+      "out": 0,
+      "merged": 2,
+      "dropped": 0,
+      "leaves": 14,
+      "elements": {
+        "Adg/AdgUid/AseUid/codeId": {
+          "target": "Airspace (the derived airspace)",
+          "rule": "ADG-ASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AdgUid/AseUid/codeType": {
+          "target": "Airspace (the derived airspace)",
+          "rule": "ADG-ASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidBase/codeId": {
+          "target": "Airspace/geometryComponent[operation=BASE, operationSequence=1]/…/contributorAirspace",
+          "rule": "ADG-BASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidBase/codeType": {
+          "target": "Airspace/geometryComponent[operation=BASE, operationSequence=1]/…/contributorAirspace",
+          "rule": "ADG-BASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidComponent/codeId": {
+          "target": "Airspace/geometryComponent[operation=codeOpr, operationSequence=n]/…/contributorAirspace",
+          "rule": "ADG-COMP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidComponent/codeType": {
+          "target": "Airspace/geometryComponent[operation=codeOpr, operationSequence=n]/…/contributorAirspace",
+          "rule": "ADG-COMP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/codeOpr": {
+          "target": "…/AirspaceGeometryComponent/operation",
+          "rule": "ADG-OPR",
+          "outcomes": {
+            "mapped": 2
+          }
+        }
+      }
+    },
+    "Ahp": {
+      "in": 2,
+      "out": 2,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 42,
+      "defaults": 2,
+      "elements": {
+        "Ahp/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 2
+          }
+        },
+        "Ahp/AhpUid/codeId": {
+          "target": "AirportHeliport/designator",
+          "rule": "AHP-DESIG",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/OrgUid/txtName": {
+          "target": "AirportHeliport/responsibleOrganisation/AirportHeliportResponsibilityOrganisation/theOrganisationAuthority",
+          "rule": "AHP-ORG",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Ahp/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/codeIcao": {
+          "target": "AirportHeliport/locationIndicatorICAO",
+          "rule": "AHP-ICAO",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/codeType": {
+          "target": "AirportHeliport/type",
+          "rule": "AHP-TYPE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/dateMagVar": {
+          "target": "AirportHeliport/dateMagneticVariation",
+          "rule": "AHP-MAGVARDATE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/geoLat": {
+          "target": "AirportHeliport/ARP/ElevatedPoint",
+          "rule": "AHP-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/geoLong": {
+          "target": "AirportHeliport/ARP/ElevatedPoint",
+          "rule": "AHP-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/txtDescrRefPt": {
+          "target": "AirportHeliport/annotation/Note[propertyName=ARP, purpose=DESCRIPTION]",
+          "rule": "AHP-DESCRREF",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/txtName": {
+          "target": "AirportHeliport/name",
+          "rule": "AHP-NAME",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/txtNameCitySer": {
+          "target": "AirportHeliport/servedCity/City/name",
+          "rule": "AHP-CITY",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/uomDistVer": {
+          "target": "AirportHeliport/fieldElevation",
+          "rule": "AHP-ELEV",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/uomRefT": {
+          "target": "AirportHeliport/referenceTemperature",
+          "rule": "AHP-REFT",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/uomTransitionAlt": {
+          "target": "AirportHeliport/transitionAltitude",
+          "rule": "AHP-TA",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valElev": {
+          "target": "AirportHeliport/fieldElevation",
+          "rule": "AHP-ELEV",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valElevAccuracy": {
+          "target": "AirportHeliport/fieldElevationAccuracy",
+          "rule": "AHP-ELEVACC",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valGeoidUndulation": {
+          "target": "AirportHeliport/ARP/ElevatedPoint/geoidUndulation",
+          "rule": "AHP-GEOID",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valMagVar": {
+          "target": "AirportHeliport/magneticVariation",
+          "rule": "AHP-MAGVAR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valMagVarChg": {
+          "target": "AirportHeliport/magneticVariationChange",
+          "rule": "AHP-MAGVARCHG",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valRefT": {
+          "target": "AirportHeliport/referenceTemperature",
+          "rule": "AHP-REFT",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ahp/valTransitionAlt": {
+          "target": "AirportHeliport/transitionAltitude",
+          "rule": "AHP-TA",
+          "outcomes": {
+            "mapped": 2
+          }
+        }
+      }
+    },
+    "Ase": {
+      "in": 18,
+      "out": 18,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 213,
+      "defaults": 18,
+      "elements": {
+        "Ase/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 18
+          }
+        },
+        "Ase/AseUid/codeId": {
+          "target": "Airspace/designator",
+          "rule": "ASE-DESIG",
+          "outcomes": {
+            "mapped": 18
+          }
+        },
+        "Ase/AseUid/codeType": {
+          "target": "Airspace/type",
+          "rule": "ASE-TYPE",
+          "outcomes": {
+            "mapped": 18
+          }
+        },
+        "Ase/Att/Timsh/codeDay": {
+          "target": "…/Timesheet/day, dayTil",
+          "rule": "TSH-DAY",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Ase/Att/Timsh/codeDayTil": {
+          "target": "…/Timesheet/day, dayTil",
+          "rule": "TSH-DAY",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeTimeRef": {
+          "target": "…/Timesheet/timeReference",
+          "rule": "TSH-REF",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Ase/Att/Timsh/dateValidTil": {
+          "target": "…/Timesheet/startDate, endDate",
+          "rule": "TSH-DATE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/dateValidWef": {
+          "target": "…/Timesheet/startDate, endDate",
+          "rule": "TSH-DATE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/timeTil": {
+          "target": "…/Timesheet/startTime, endTime",
+          "rule": "TSH-TIME",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Ase/Att/Timsh/timeWef": {
+          "target": "…/Timesheet/startTime, endTime",
+          "rule": "TSH-TIME",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Ase/Att/codeWorkHr": {
+          "target": "Airspace/activation/AirspaceActivation (timeInterval/Timesheet, status)",
+          "rule": "ATT-WORKHR",
+          "outcomes": {
+            "derived": 7
+          }
+        },
+        "Ase/Att/txtRmkWorkHr": {
+          "target": "…/AirspaceActivation/annotation/Note[purpose=REMARK]",
+          "rule": "ATT-RMK",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/codeActivity": {
+          "target": "Airspace/activation/AirspaceActivation/activity",
+          "rule": "ASE-ACTIVITY",
+          "outcomes": {
+            "mapped": 6
+          }
+        },
+        "Ase/codeClass": {
+          "target": "Airspace/class/AirspaceLayerClass/classification",
+          "rule": "ASE-CLASS",
+          "outcomes": {
+            "mapped": 8
+          }
+        },
+        "Ase/codeDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimitReference",
+          "rule": "ASE-LOWERREF",
+          "outcomes": {
+            "mapped": 17
+          }
+        },
+        "Ase/codeDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimitReference",
+          "rule": "ASE-UPPERREF",
+          "outcomes": {
+            "mapped": 17
+          }
+        },
+        "Ase/codeMil": {
+          "target": "-",
+          "rule": "UNMAPPED",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Ase(codeId=EAMTA01;codeType=OTHER)",
+              "value": "MIL"
+            }
+          ]
+        },
+        "Ase/txtLocalType": {
+          "target": "Airspace/localType",
+          "rule": "ASE-LOCALTYPE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/txtName": {
+          "target": "Airspace/name",
+          "rule": "ASE-NAME",
+          "outcomes": {
+            "mapped": 18
+          }
+        },
+        "Ase/txtRmk": {
+          "target": "*/annotation/Note[purpose=REMARK]",
+          "rule": "GEN-RMK",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/uomDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimit",
+          "rule": "ASE-LOWER",
+          "outcomes": {
+            "mapped": 17
+          }
+        },
+        "Ase/uomDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
+          "outcomes": {
+            "mapped": 17
+          }
+        },
+        "Ase/valDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimit",
+          "rule": "ASE-LOWER",
+          "outcomes": {
+            "mapped": 17
+          }
+        },
+        "Ase/valDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
+          "outcomes": {
+            "mapped": 17
+          }
+        }
+      }
+    },
+    "Dme": {
+      "in": 2,
+      "out": 2,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 28,
+      "defaults": 2,
+      "elements": {
+        "Dme/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 2
+          }
+        },
+        "Dme/DmeUid/codeId": {
+          "target": "VOR|DME|NDB|TACAN/designator (and Navaid/designator)",
+          "rule": "NAV-DESIG",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/DmeUid/geoLat": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/DmeUid/geoLong": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/Dtt/codeWorkHr": {
+          "target": "-",
+          "rule": "GEN-TT",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Dme(codeId=BOR;geoLat=52.3683333333;geoLong=-32.375)",
+              "value": "H24"
+            }
+          ]
+        },
+        "Dme/OrgUid/txtName": {
+          "target": "…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority",
+          "rule": "NAV-ORG",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Dme/VorUid/codeId": {
+          "target": "Navaid[type=VOR_DME]/navaidEquipment",
+          "rule": "DME-VOR",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Dme/VorUid/geoLat": {
+          "target": "Navaid[type=VOR_DME]/navaidEquipment",
+          "rule": "DME-VOR",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Dme/VorUid/geoLong": {
+          "target": "Navaid[type=VOR_DME]/navaidEquipment",
+          "rule": "DME-VOR",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Dme/codeChannel": {
+          "target": "DME/channel",
+          "rule": "DME-CHAN",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/txtName": {
+          "target": "VOR|DME|NDB|TACAN/name (and Navaid/name)",
+          "rule": "NAV-NAME",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/uomDistVer": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/uomGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Dme/valElev": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Dme/valElevAccuracy": {
+          "target": "*/ElevatedPoint/verticalAccuracy",
+          "rule": "GEO-ELEVACC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Dme/valGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Dpn": {
+      "in": 14,
+      "out": 14,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 105,
+      "defaults": 14,
+      "elements": {
+        "Dpn/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 14
+          }
+        },
+        "Dpn/DpnUid/codeId": {
+          "target": "DesignatedPoint/designator",
+          "rule": "DPN-DESIG",
+          "outcomes": {
+            "mapped": 14
+          }
+        },
+        "Dpn/DpnUid/geoLat": {
+          "target": "DesignatedPoint/location/Point",
+          "rule": "DPN-POS",
+          "outcomes": {
+            "mapped": 14
+          }
+        },
+        "Dpn/DpnUid/geoLong": {
+          "target": "DesignatedPoint/location/Point",
+          "rule": "DPN-POS",
+          "outcomes": {
+            "mapped": 14
+          }
+        },
+        "Dpn/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 14
+          }
+        },
+        "Dpn/codeType": {
+          "target": "DesignatedPoint/type",
+          "rule": "DPN-TYPE",
+          "outcomes": {
+            "mapped": 14
+          }
+        },
+        "Dpn/txtName": {
+          "target": "DesignatedPoint/name",
+          "rule": "DPN-NAME",
+          "outcomes": {
+            "mapped": 13
+          }
+        },
+        "Dpn/uomGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 11
+          }
+        },
+        "Dpn/valGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 11
+          }
+        }
+      }
+    },
+    "Gbr": {
+      "in": 1,
+      "out": 1,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 3606,
+      "defaults": 1,
+      "elements": {
+        "Gbr/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 1
+          }
+        },
+        "Gbr/GbrUid/txtName": {
+          "target": "GeoBorder/name",
+          "rule": "GBR-NAME",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=END]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=END]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=END]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=END]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 900
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
+          "outcomes": {
+            "mapped": 900
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 900
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 900
+          }
+        },
+        "Gbr/codeType": {
+          "target": "GeoBorder/type",
+          "rule": "GBR-TYPE",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Ndb": {
+      "in": 5,
+      "out": 5,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 53,
+      "defaults": 10,
+      "elements": {
+        "Ndb/(Navaid/featureLifetime)": {
+          "target": "Navaid/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 5
+          }
+        },
+        "Ndb/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 5
+          }
+        },
+        "Ndb/NdbUid/codeId": {
+          "target": "VOR|DME|NDB|TACAN/designator (and Navaid/designator)",
+          "rule": "NAV-DESIG",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/NdbUid/geoLat": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/NdbUid/geoLong": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/Ntt/codeWorkHr": {
+          "target": "-",
+          "rule": "GEN-TT",
+          "outcomes": {
+            "unmapped": 2
+          },
+          "samples": [
+            {
+              "key": "Ndb(codeId=KL;geoLat=52.383667;geoLong=-31.850639)",
+              "value": "H24"
+            },
+            {
+              "key": "Ndb(codeId=SCN;geoLat=52.371667;geoLong=-32.028333)",
+              "value": "H24"
+            }
+          ]
+        },
+        "Ndb/OrgUid/txtName": {
+          "target": "…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority",
+          "rule": "NAV-ORG",
+          "outcomes": {
+            "derived": 5
+          }
+        },
+        "Ndb/codeClass": {
+          "target": "NDB/class",
+          "rule": "NDB-CLASS",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/txtName": {
+          "target": "VOR|DME|NDB|TACAN/name (and Navaid/name)",
+          "rule": "NAV-NAME",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Ndb/txtRmk": {
+          "target": "*/annotation/Note[purpose=REMARK]",
+          "rule": "GEN-RMK",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Ndb/uomFreq": {
+          "target": "NDB/frequency",
+          "rule": "NDB-FREQ",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Ndb/uomGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ndb/valFreq": {
+          "target": "NDB/frequency",
+          "rule": "NDB-FREQ",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Ndb/valGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ndb/valMagVar": {
+          "target": "…/magneticVariation",
+          "rule": "NAV-MAGVAR",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Obs": {
+      "in": 4,
+      "out": 4,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 48,
+      "defaults": 4,
+      "elements": {
+        "Obs/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 4
+          }
+        },
+        "Obs/ObsUid/geoLat": {
+          "target": "…/VerticalStructurePart/horizontalProjection_location/ElevatedPoint",
+          "rule": "OBS-POS",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/ObsUid/geoLong": {
+          "target": "…/VerticalStructurePart/horizontalProjection_location/ElevatedPoint",
+          "rule": "OBS-POS",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/codeLgt": {
+          "target": "VerticalStructure/lighted",
+          "rule": "OBS-LGT",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/txtDescrType": {
+          "target": "VerticalStructure/type=OTHER + annotation/Note[propertyName=type, purpose=DESCRIPTION]",
+          "rule": "OBS-TYPE",
+          "outcomes": {
+            "lossy": 4
+          },
+          "samples": [
+            {
+              "key": "Obs(geoLat=52.36171389;geoLong=-28.03756667)",
+              "value": "ANTENNA"
+            },
+            {
+              "key": "Obs(geoLat=55.5185166667;geoLong=-25.6318694444)",
+              "value": "CHIMNEY"
+            },
+            {
+              "key": "Obs(geoLat=52.3617138889;geoLong=-23.0375666667)",
+              "value": "STADIUM"
+            },
+            {
+              "key": "Obs(geoLat=55.5185166667;geoLong=-24.6218694444)",
+              "value": "POLE"
+            }
+          ]
+        },
+        "Obs/txtName": {
+          "target": "VerticalStructure/name",
+          "rule": "OBS-NAME",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/uomDistVer": {
+          "target": "VerticalStructure/part/VerticalStructurePart/verticalExtent",
+          "rule": "OBS-HGT",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/uomGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/valElev": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/valElevAccuracy": {
+          "target": "*/ElevatedPoint/verticalAccuracy",
+          "rule": "GEO-ELEVACC",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/valGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Obs/valHgt": {
+          "target": "VerticalStructure/part/VerticalStructurePart/verticalExtent",
+          "rule": "OBS-HGT",
+          "outcomes": {
+            "mapped": 4
+          }
+        }
+      }
+    },
+    "Org": {
+      "in": 5,
+      "out": 5,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 10,
+      "defaults": 5,
+      "elements": {
+        "Org/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 5
+          }
+        },
+        "Org/OrgUid/txtName": {
+          "target": "OrganisationAuthority/name",
+          "rule": "ORG-NAME",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Org/codeType": {
+          "target": "OrganisationAuthority/type",
+          "rule": "ORG-TYPE",
+          "outcomes": {
+            "mapped": 5
+          }
+        }
+      }
+    },
+    "Rdn": {
+      "in": 4,
+      "out": 4,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 18,
+      "defaults": 4,
+      "elements": {
+        "Rdn/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 4
+          }
+        },
+        "Rdn/RdnUid/RwyUid/AhpUid/codeId": {
+          "target": "RunwayDirection/usedRunway",
+          "rule": "RDN-RWY",
+          "outcomes": {
+            "derived": 4
+          }
+        },
+        "Rdn/RdnUid/RwyUid/txtDesig": {
+          "target": "RunwayDirection/usedRunway",
+          "rule": "RDN-RWY",
+          "outcomes": {
+            "derived": 4
+          }
+        },
+        "Rdn/RdnUid/txtDesig": {
+          "target": "RunwayDirection/designator",
+          "rule": "RDN-DESIG",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Rdn/uomElevTdz": {
+          "target": "RunwayDirection/elevationTDZ",
+          "rule": "RDN-TDZ",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Rdn/valElevTdz": {
+          "target": "RunwayDirection/elevationTDZ",
+          "rule": "RDN-TDZ",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Rdn/valTrueBrg": {
+          "target": "RunwayDirection/trueBearing",
+          "rule": "RDN-TRUEBRG",
+          "outcomes": {
+            "mapped": 4
+          }
+        }
+      }
+    },
+    "Rwy": {
+      "in": 2,
+      "out": 2,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 25,
+      "defaults": 2,
+      "elements": {
+        "Rwy/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 2
+          }
+        },
+        "Rwy/RwyUid/AhpUid/codeId": {
+          "target": "Runway/associatedAirportHeliport",
+          "rule": "RWY-AHP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Rwy/RwyUid/txtDesig": {
+          "target": "Runway/designator",
+          "rule": "RWY-DESIG",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/codeComposition": {
+          "target": "Runway/surfaceProperties/SurfaceCharacteristics/composition",
+          "rule": "RWY-COMP",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/codePcnEvalMethod": {
+          "target": "…/SurfaceCharacteristics/evaluationMethodPCN",
+          "rule": "RWY-PCNEVAL",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/codePcnMaxTirePressure": {
+          "target": "…/SurfaceCharacteristics/maxTyrePressurePCN",
+          "rule": "RWY-PCNTYRE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/codePcnPavementSubgrade": {
+          "target": "…/SurfaceCharacteristics/pavementSubgradePCN",
+          "rule": "RWY-PCNSUB",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/codePcnPavementType": {
+          "target": "…/SurfaceCharacteristics/pavementTypePCN",
+          "rule": "RWY-PCNTYPE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/uomDimRwy": {
+          "target": "Runway/nominalLength",
+          "rule": "RWY-LEN",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/uomDimStrip": {
+          "target": "Runway/lengthStrip",
+          "rule": "RWY-LENSTRIP",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Rwy/valLen": {
+          "target": "Runway/nominalLength",
+          "rule": "RWY-LEN",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/valLenStrip": {
+          "target": "Runway/lengthStrip",
+          "rule": "RWY-LENSTRIP",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Rwy/valPcnClass": {
+          "target": "…/SurfaceCharacteristics/classPCN",
+          "rule": "RWY-PCN",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/valWid": {
+          "target": "Runway/nominalWidth",
+          "rule": "RWY-WID",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Rwy/valWidStrip": {
+          "target": "Runway/widthStrip",
+          "rule": "RWY-WIDSTRIP",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Tcn": {
+      "in": 1,
+      "out": 1,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 11,
+      "defaults": 2,
+      "elements": {
+        "Tcn/(Navaid/featureLifetime)": {
+          "target": "Navaid/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 1
+          }
+        },
+        "Tcn/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 1
+          }
+        },
+        "Tcn/OrgUid/txtName": {
+          "target": "…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority",
+          "rule": "NAV-ORG",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Tcn/TcnUid/codeId": {
+          "target": "VOR|DME|NDB|TACAN/designator (and Navaid/designator)",
+          "rule": "NAV-DESIG",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/TcnUid/geoLat": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/TcnUid/geoLong": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/codeChannel": {
+          "target": "TACAN/channel",
+          "rule": "TCN-CHAN",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/dateMagVar": {
+          "target": "…/dateMagneticVariation",
+          "rule": "NAV-MAGVARDATE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/txtName": {
+          "target": "VOR|DME|NDB|TACAN/name (and Navaid/name)",
+          "rule": "NAV-NAME",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/uomDistVer": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/valElev": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Tcn/valMagVar": {
+          "target": "…/magneticVariation",
+          "rule": "NAV-MAGVAR",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Uni": {
+      "in": 5,
+      "out": 5,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 14,
+      "defaults": 5,
+      "elements": {
+        "Uni/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 5
+          }
+        },
+        "Uni/AhpUid/codeId": {
+          "target": "Unit/airportLocation",
+          "rule": "UNI-AHP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Uni/OrgUid/txtName": {
+          "target": "Unit/ownerOrganisation",
+          "rule": "UNI-ORG",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Uni/UniUid/txtName": {
+          "target": "Unit/name",
+          "rule": "UNI-NAME",
+          "outcomes": {
+            "mapped": 5
+          }
+        },
+        "Uni/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Uni/codeType": {
+          "target": "Unit/type",
+          "rule": "UNI-TYPE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Uni/geoLat": {
+          "target": "Unit/position/ElevatedPoint",
+          "rule": "UNI-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Uni/geoLong": {
+          "target": "Unit/position/ElevatedPoint",
+          "rule": "UNI-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        }
+      }
+    },
+    "Vor": {
+      "in": 7,
+      "out": 7,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 81,
+      "defaults": 14,
+      "elements": {
+        "Vor/(Navaid/featureLifetime)": {
+          "target": "Navaid/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 7
+          }
+        },
+        "Vor/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 7
+          }
+        },
+        "Vor/OrgUid/txtName": {
+          "target": "…/authority/AuthorityForNavaidEquipment/theOrganisationAuthority",
+          "rule": "NAV-ORG",
+          "outcomes": {
+            "derived": 7
+          }
+        },
+        "Vor/VorUid/codeId": {
+          "target": "VOR|DME|NDB|TACAN/designator (and Navaid/designator)",
+          "rule": "NAV-DESIG",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/VorUid/geoLat": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/VorUid/geoLong": {
+          "target": "…/location/ElevatedPoint (and Navaid/location)",
+          "rule": "NAV-POS",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/Vtt/codeWorkHr": {
+          "target": "-",
+          "rule": "GEN-TT",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Vor(codeId=BOR;geoLat=52.368389;geoLong=-32.375222)",
+              "value": "H24"
+            }
+          ]
+        },
+        "Vor/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/codeType": {
+          "target": "VOR/type",
+          "rule": "VOR-TYPE",
+          "outcomes": {
+            "mapped": 6
+          }
+        },
+        "Vor/dateMagVar": {
+          "target": "…/dateMagneticVariation",
+          "rule": "NAV-MAGVARDATE",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Vor/txtName": {
+          "target": "VOR|DME|NDB|TACAN/name (and Navaid/name)",
+          "rule": "NAV-NAME",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/uomDistVer": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Vor/uomFreq": {
+          "target": "VOR/frequency",
+          "rule": "VOR-FREQ",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/uomGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Vor/valDeclination": {
+          "target": "VOR/declination",
+          "rule": "VOR-DECL",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Vor/valElev": {
+          "target": "*/ElevatedPoint/elevation",
+          "rule": "GEO-ELEV",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Vor/valFreq": {
+          "target": "VOR/frequency",
+          "rule": "VOR-FREQ",
+          "outcomes": {
+            "mapped": 7
+          }
+        },
+        "Vor/valGeoAccuracy": {
+          "target": "*/Point|ElevatedPoint/horizontalAccuracy",
+          "rule": "GEO-HACC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Vor/valMagVar": {
+          "target": "…/magneticVariation",
+          "rule": "NAV-MAGVAR",
+          "outcomes": {
+            "mapped": 3
+          }
+        }
+      }
+    }
+  },
+  "targets": {
+    "AirportHeliport": 2,
+    "Airspace": 18,
+    "DME": 2,
+    "DesignatedPoint": 14,
+    "GeoBorder": 1,
+    "NDB": 5,
+    "Navaid": 13,
+    "OrganisationAuthority": 5,
+    "Runway": 2,
+    "RunwayDirection": 4,
+    "TACAN": 1,
+    "Unit": 5,
+    "VOR": 7,
+    "VerticalStructure": 4
+  },
+  "issues": [
+    {
+      "code": "limit_inconsistent",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=EADD1;codeType=CTA-P)",
+      "message": "lowerLimit: unit FL with reference HEI (flight levels are STD)",
+      "count": 1
+    }
+  ]
+}

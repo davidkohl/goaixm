@@ -47,6 +47,7 @@ func (e *elem) dpn() error {
 	e.code(p, "type", v.CodeType, "DPN-TYPE", "dpn_type")
 	e.str(p, "name", v.Name, "DPN-NAME", ttName)
 	if pp := e.position(f, v.Position, "DPN-POS"); pp != nil {
+		e.measure(pp, "horizontalAccuracy", v.GeoAccuracy, v.GeoAccuracyUom, "GEO-HACC", ntDistance, "uom_dist")
 		p.add("location", wrap("location", point(pp, false)))
 	}
 	// AhpUidAssoc, else AhpUid; airportHeliport takes one value.
@@ -237,6 +238,7 @@ func (e *elem) ahp() error {
 		p.add("responsibleOrganisation", wrap("responsibleOrganisation", rp.object("AirportHeliportResponsibilityOrganisation", "resp", orderAhpResp)))
 	}
 	if pp := e.position(f, v.Position, "AHP-POS"); pp != nil {
+		e.measure(pp, "horizontalAccuracy", v.GeoAccuracy, v.GeoAccuracyUom, "GEO-HACC", ntDistance, "uom_dist")
 		e.measure(pp, "geoidUndulation", v.Elevation.GeoidUndulation, v.Elevation.Uom, "AHP-GEOID", ntSigned, "uom_distver")
 		p.add("ARP", wrap("ARP", point(pp, true)))
 	}

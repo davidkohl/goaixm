@@ -2,8 +2,8 @@
   "format": 1,
   "converter": {
     "name": "goaixm/aixm45to51",
-    "version": "0.2.0",
-    "mappingDigest": "f05e97b957bb6b923092c749fda53f9e97de4b48e84ed7272ce97d50c99ea6c5",
+    "version": "0.3.0",
+    "mappingDigest": "346f477b5bfbef0baf598c77fd1acd0c0ec14d3df3555ca0c67fbde5884b81a4",
     "module": ""
   },
   "from": "4.5",
@@ -1705,6 +1705,22 @@
       "kind": "Ase",
       "key": "Ase(codeId=XZERO;codeType=D)",
       "message": "boundary vertex 1: arc of zero length (its end is its start): omitted",
+      "count": 1
+    },
+    {
+      "code": "arc_end_snapped",
+      "severity": "info",
+      "kind": "Ase",
+      "key": "Ase(codeId=XARC;codeType=P)",
+      "message": "2 boundary vertices next to arcs replaced by the computed arc ends (up to 0.04 m away): radius and vertices disagree within the arc tolerance",
+      "count": 1
+    },
+    {
+      "code": "arc_end_snapped",
+      "severity": "info",
+      "kind": "Ase",
+      "key": "Ase(codeId=XCCA;codeType=P)",
+      "message": "2 boundary vertices next to arcs replaced by the computed arc ends (up to 0.05 m away): radius and vertices disagree within the arc tolerance",
       "count": 1
     },
     {

@@ -164,7 +164,10 @@ func (r *run) resolveAirspaces() {
 		switch {
 		case len(bs) > 0:
 			bs[0].used = true
-			bs[0].plan = r.buildRing(bs[0], issue)
+			bs[0].plan = r.buildRing(bs[0], r.cfg.BorderMode, issue)
+			if r.cfg.RingCheck != nil {
+				r.checkRing(bs[0], issue)
+			}
 			if len(bs) > 1 {
 				issue("boundary_duplicate", convert.Error, fmt.Sprintf("%d boundaries (Abd) for one airspace: the first is used", len(bs)))
 			}
