@@ -18,6 +18,9 @@ A Go library for parsing and working with [AIXM 5.1.1](https://aixm.aero)
   circles on WGS-84, referenced GeoBorders and contributor airspaces; helpers
   for every AIXM point, curve and surface.
 - **EUROCONTROL ADR 23.5.0** extension, opt-in.
+- **Version-aware**: the AIXM version of every document is detected; other
+  versions are refused with `ErrUnsupportedVersion` or converted to 5.1.1
+  through pluggable converters, with a report accounting for every value.
 - No dependencies outside the standard library.
 
 ```sh
@@ -180,6 +183,56 @@ The `Options` methods mirror the package functions (`SegmentCoords`,
 `AirspaceToGeoJSON`, `AirspaceToGeoJSONWithRefs`); the zero value behaves
 like them.
 
+## AIXM versions and conversion
+
+Package `version` detects the AIXM version of a document from its root
+element (`AIXM-Snapshot version="4.5"`, or the AIXM namespace of
+`AIXMBasicMessage`/`ADRMessage`):
+
+```go
+d, err := version.DetectFile("data.xml") // d.Version, d.Root, d.Attrs
+```
+
+`Parse` and `Stream` read AIXM 5.1.1. A document of another AIXM version
+fails with `goaixm.ErrUnsupportedVersion`, unless `Options.Converters` holds
+a path of converters to 5.1.1: then it is converted on the fly and its
+records are decoded like native members.
+
+```go
+reg := convert.NewRegistry(myConverter) // any convert.Converter
+err := goaixm.StreamFile(ctx, "old.xml", goaixm.Options{
+	Converters:  reg,
+	OnConverted: func(r *convert.Report) error { report = r; return nil },
+}, func(m goaixm.Member) error {
+	// m.Raw is the converted 5.1.1 XML, m.Provenance its source element(s)
+	return nil
+})
+```
+
+Package `convert` is the framework; it ships no concrete converter:
+
+| Type | Role |
+|---|---|
+| `Converter` | `From`, `To`, `ID` and `Convert(ctx, Source, Sink)`: writes the target document one standalone member element (`Record`) at a time, deterministically |
+| `Source` | A re-openable document (`FileSource`, `BytesSource`, `Spool` for a one-shot reader), for converters that read twice |
+| `Sink` | Receives `Begin(Header)`, `Put(Record)`, `End()`; `XMLWriter` writes an `AIXMBasicMessage`, `Tee` fans out, `goaixm.MemberSink` decodes |
+| `Registry` | One converter per version pair; `Path` finds the shortest chain, `Converter` returns it composed with `Chain` |
+| `Report` | Per source kind and path: counts by `Outcome` (`mapped`, `derived`, `defaulted`, `lossy`, `unmapped`, `invalid`), samples, issues, source and output sha256, `Digest` |
+| `ConverterID` | Name, rule version, mapping-table digest and module version of the rules used |
+
+`convert.Run` drives a converter: it checks the source version and the sink
+call order, completes the report and verifies its accounting
+(`Report.Check`): every source leaf (attribute or element text, see
+`convert.WalkLeaves`) gets exactly one outcome, and every source element is
+emitted, merged or dropped. Equal input gives byte-identical output and an
+equal report digest. `convert.NewV5` derives stable UUIDs for converted
+identities.
+
+`ParseSource`/`StreamSource` take a `convert.Source`; `Parse`/`Stream` with a
+plain reader copy a document that needs conversion to `Options.SpoolDir`
+first. Native 5.1.1 input is never copied and decodes exactly as without
+converters.
+
 ## Validation
 
 ```go
@@ -206,7 +259,9 @@ for _, e := range airport.TimeSlice[0].Extension {
 
 | Path | Contents |
 |---|---|
-| `.` (package `goaixm`) | `Parse`, `Stream`, `Registry`, `Message`, `Member` |
+| `.` (package `goaixm`) | `Parse`, `Stream`, `ParseSource`, `StreamSource`, `Registry`, `Message`, `Member`, `MemberSink` |
+| `version/` | AIXM versions and document version detection |
+| `convert/` | Converter interface, registry, chains, reports, `XMLWriter` |
 | `aixm/` | The AIXM 5.1.1 model; `*_gen.go` are generated |
 | `gml/` | The GML 3.2.1 subset AIXM uses |
 | `geo/` | Coordinates, geodesic arcs, GeoJSON |
@@ -223,7 +278,12 @@ git submodule update --init   # DONLON reference data
 go generate ./...             # regenerate aixm/*_gen.go from tools/xsd
 go vet ./... && go test ./...
 go test -fuzz=FuzzParse -fuzztime=30s .
+go test -fuzz=FuzzDetect -fuzztime=30s ./version
 ```
+
+`internal/testconv` holds a namespace-relabelling converter used only by
+the tests to exercise the conversion framework; it is not a real version
+conversion.
 
 Tests use the EUROCONTROL [DONLON](https://github.com/aixm/donlon)
 reference data and skip when the submodule is missing. CI also checks gofmt,
