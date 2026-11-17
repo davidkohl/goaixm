@@ -27,7 +27,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 		return nil, fmt.Errorf("geojson: patch has no exterior")
 	}
 
-	cv.ring = 0
+	cv.ring = cv.ringBase
 	exterior, err := extractAbstractRingCoords(patch.Exterior, cv, msg, warn)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func extractAllRings(patches *gml.SurfacePatches, cv *conv, msg *goaixm.Message,
 
 	rings := [][][2]float64{exterior}
 	for i := range patch.Interior {
-		cv.ring = i + 1
+		cv.ring = cv.ringBase + i + 1
 		hole, err := extractAbstractRingCoords(&patch.Interior[i], cv, msg, prefixWarn(warn, fmt.Sprintf("interior ring %d: ", i)))
 		if err != nil {
 			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
@@ -162,12 +162,12 @@ func extractRingTypeCoords(ring *gml.Ring, cv *conv, msg *goaixm.Message, warn f
 			continue
 		}
 
-		c, err := segmentsToCoords(curve.Segments, cv, msg)
+		c, ends, err := segmentsToCoordsEnds(curve.Segments, cv, msg)
 		if err != nil {
 			return nil, err
 		}
 		if len(c) > 0 {
-			members = append(members, ringMember{coords: c, index: idx})
+			members = append(members, ringMember{coords: c, index: idx, ends: ends})
 		}
 	}
 
@@ -189,6 +189,7 @@ type ringMember struct {
 	isBorder bool
 	href     string
 	index    int // of the curveMember in the ring
+	ends     curveEnds
 }
 
 // snapJunctions applies the border junction snap (see
@@ -219,21 +220,82 @@ func snapJunctions(members []ringMember, cv *conv) {
 			if following {
 				end, inner = 0, 1
 			}
-			p, q := nb.coords[end], nb.coords[inner]
+			p := nb.coords[end]
 			cut := borderPoint(b.coords, project(b.coords, p))
 			d := GeodesicDistance(p[1], p[0], cut[1], cut[0])
-			if d == 0 || d > cv.opt.BorderSnapTolerance || !crossesBefore(q, p, b.coords) {
+			if d == 0 || d > cv.opt.BorderSnapTolerance {
 				continue
 			}
-			c := slices.Clone(nb.coords)
-			c[end] = cut
-			nb.coords = c
+			if cv.opt.LegacySnapAfterDensify {
+				// DensifyVersion 1: only the end position moves.
+				if !crossesBefore(nb.coords[inner], p, b.coords) {
+					continue
+				}
+				c := slices.Clone(nb.coords)
+				c[end] = cut
+				nb.coords = c
+			} else {
+				// The end piece runs from the explicit vertex next to the end
+				// (src) to the end; it is tested as served (all its
+				// sub-segments) and, after the move, densified again from
+				// src to the cut point.
+				src := nb.ends.last
+				if following {
+					src = nb.ends.first
+				}
+				j := inner // index of src in coords
+				if src != nil {
+					if following {
+						j = slices.Index(nb.coords, *src)
+					} else {
+						j = lastIndex(nb.coords, *src)
+					}
+					if j < 0 {
+						src, j = nil, inner
+					}
+				}
+				// The served end piece, oriented towards p.
+				piece := slices.Clone(nb.coords[min(j, end) : max(j, end)+1])
+				if following {
+					slices.Reverse(piece)
+				}
+				crosses := false
+				for m := 0; m+1 < len(piece) && !crosses; m++ {
+					crosses = crossesBefore(piece[m], piece[m+1], b.coords)
+				}
+				if !crosses {
+					continue
+				}
+				c := slices.Clone(nb.coords)
+				c[end] = cut
+				if src != nil {
+					q := nb.coords[j]
+					if following {
+						c = append([][2]float64{cut}, geodesicInterior(cut, q, cv.opt.GeodesicTolerance)...)
+						c = append(c, nb.coords[j:]...)
+					} else {
+						c = append(slices.Clone(nb.coords[:j+1]), geodesicInterior(q, cut, cv.opt.GeodesicTolerance)...)
+						c = append(c, cut)
+					}
+				}
+				nb.coords = c
+			}
 			if cv.opt.OnRepair != nil {
 				cv.opt.OnRepair(Repair{Kind: RepairBorderJunctionSnap, Ring: cv.ring, Member: nb.index, Border: b.href,
 					From: p, To: cut, DistanceM: d})
 			}
 		}
 	}
+}
+
+// lastIndex returns the index of the last occurrence of p in c, or -1.
+func lastIndex(c [][2]float64, p [2]float64) int {
+	for i := len(c) - 1; i >= 0; i-- {
+		if c[i] == p {
+			return i
+		}
+	}
+	return -1
 }
 
 // borderPoint returns the position at parameter s = i + t of a polyline.
@@ -508,16 +570,45 @@ func resolveBorderCurve(href string, cv *conv, msg *goaixm.Message) ([][2]float6
 // polyline.  Order matters: a boundary that runs out along a radial, around an
 // arc and back would self-intersect if its segments were reordered.
 func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([][2]float64, error) {
+	c, _, err := segmentsToCoordsEnds(segs, cv, msg)
+	return c, err
+}
+
+// curveEnds are the explicit source positions next to the ends of a
+// converted curve whose first / last segment is a densified geodesic
+// (nil otherwise): the far ends of the end pieces, so that a moved end can
+// be densified again (snapJunctions).
+type curveEnds struct {
+	first, last *[2]float64
+}
+
+// segmentsToCoordsEnds is segmentsToCoords, also returning the curveEnds.
+func segmentsToCoordsEnds(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([][2]float64, curveEnds, error) {
+	var ends curveEnds
 	if segs == nil {
-		return nil, nil
+		return nil, ends, nil
 	}
 	var coords [][2]float64
 
-	for _, seg := range segs.Ordered() {
+	ordered := segs.Ordered()
+	for k, seg := range ordered {
 		var (
 			c   [][2]float64
 			err error
 		)
+		geodesic := func() {
+			if cv.opt.GeodesicTolerance > 0 && len(c) >= 2 {
+				if k == 0 {
+					p := c[1]
+					ends.first = &p
+				}
+				if k == len(ordered)-1 {
+					p := c[len(c)-2]
+					ends.last = &p
+				}
+			}
+			c = densifyGeodesic(c, cv.opt.GeodesicTolerance)
+		}
 		switch {
 		case seg.GeodesicString != nil:
 			if seg.GeodesicString.PosList != nil {
@@ -525,7 +616,7 @@ func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([
 			} else if len(seg.GeodesicString.Pos) > 0 {
 				c, err = posSliceToCoords(seg.GeodesicString.Pos)
 			}
-			c = densifyGeodesic(c, cv.opt.GeodesicTolerance)
+			geodesic()
 		case seg.LineStringSegment != nil:
 			if seg.LineStringSegment.PosList != nil {
 				c, err = posListToCoords(seg.LineStringSegment.PosList.Value)
@@ -533,7 +624,7 @@ func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([
 				c, err = posSliceToCoords(seg.LineStringSegment.Pos)
 			}
 			if strings.EqualFold(strings.TrimSpace(seg.LineStringSegment.Interpolation), "geodesic") {
-				c = densifyGeodesic(c, cv.opt.GeodesicTolerance)
+				geodesic()
 			}
 		case seg.Arc != nil:
 			c, err = discretizeArc(seg.Arc.Pos, seg.Arc.PosList, cv.opt.ArcTolerance)
@@ -545,14 +636,14 @@ func segmentsToCoords(segs *gml.CurveSegments, cv *conv, msg *goaixm.Message) ([
 			c, err = discretizeCircleByCenter(seg.CircleByCenterPoint, cv)
 		}
 		if err != nil {
-			return nil, err
+			return nil, ends, err
 		}
 		if seg.Arc != nil || seg.Circle != nil || seg.ArcByCenterPoint != nil || seg.CircleByCenterPoint != nil {
 			cv.markComputed(c)
 		}
 		coords = cv.appendDedup(coords, c)
 	}
-	return coords, nil
+	return coords, ends, nil
 }
 
 // appendDedup appends src to dst, skipping the first point of src when it

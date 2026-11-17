@@ -135,6 +135,7 @@ func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool, o Opti
 			continue
 		}
 
+		cv.ringBase = ringBase(ts.GeometryComponent, vol)
 		geom, err := volumeGeometry(vol, cv, msg, 0, nil)
 		if err != nil {
 			if firstErr == nil {
@@ -288,7 +289,9 @@ func resolveContributors(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message
 		return nil, nil
 	}
 
+	base := cv.ringBase
 	fc, err := airspaceToGeoJSONDepth(sub, cv, msg, depth+1)
+	cv.ringBase = base
 	if err != nil {
 		// A contributor we cannot convert simply contributes nothing; the
 		// airspace may still have geometry from its other components.
@@ -310,6 +313,7 @@ func airspaceToGeoJSONDepth(a *aixm.Airspace, cv *conv, msg *goaixm.Message, dep
 		if agc.TheAirspaceVolume == nil {
 			continue
 		}
+		cv.ringBase = ringBase(ts.GeometryComponent, agc.TheAirspaceVolume)
 		geom, err := volumeGeometry(agc.TheAirspaceVolume, cv, msg, depth, nil)
 		if err != nil {
 			continue
@@ -339,6 +343,27 @@ func airspaceToGeoJSONDepth(a *aixm.Airspace, cv *conv, msg *goaixm.Message, dep
 		})
 	}
 	return fc, nil
+}
+
+// ringBase returns the number of source rings (each polygon patch's
+// exterior and interiors) of the volumes before vol, in document order.
+func ringBase(in []aixm.AirspaceGeometryComponent, vol *aixm.AirspaceVolume) int {
+	n := 0
+	for i := range in {
+		v := in[i].TheAirspaceVolume
+		if v == nil {
+			continue
+		}
+		if v == vol {
+			return n
+		}
+		if p := v.HorizontalProjection.Patches(); p != nil {
+			for _, pp := range p.PolygonPatch {
+				n += 1 + len(pp.Interior)
+			}
+		}
+	}
+	return n
 }
 
 // orderedComponents returns the geometry components sorted by their

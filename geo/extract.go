@@ -80,6 +80,10 @@ func surfacePolygons(patches *gml.SurfacePatches, o Options, msg *goaixm.Message
 	cv := o.conv(msg)
 	var out [][][][2]float64
 	for i := range patches.PolygonPatch {
+		cv.ringBase = 0
+		for _, pp := range patches.PolygonPatch[:i] {
+			cv.ringBase += 1 + len(pp.Interior)
+		}
 		single := &gml.SurfacePatches{PolygonPatch: patches.PolygonPatch[i : i+1]}
 		rings, err := extractAllRings(single, cv, msg, nil)
 		if err != nil {
@@ -135,6 +139,7 @@ func airspaceComponents(a *aixm.Airspace, o Options, msg *goaixm.Message) ([]Air
 			Volume:    gc.TheAirspaceVolume,
 		}
 		if c.Volume != nil {
+			cv.ringBase = ringBase(a.TimeSlice[0].GeometryComponent, c.Volume)
 			g, err := volumeGeometry(c.Volume, cv, msg, 0, func(w string) { c.Warnings = append(c.Warnings, w) })
 			if err != nil {
 				return nil, err

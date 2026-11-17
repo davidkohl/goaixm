@@ -61,9 +61,16 @@ type Options struct {
 	// the border (the curve's own last, or first, piece crosses the border
 	// before reaching it) and within this distance of the border is moved
 	// onto the border, to the point the stretch is cut at (its nearest
-	// point on the border polyline).  Without it the literal rendering
+	// point on the border polyline); the curve's end piece is then
+	// densified again, from the explicit vertex next to it to that point.  Without it the literal rendering
 	// self-intersects there.  Every snap is reported to OnRepair.  0: off.
 	BorderSnapTolerance float64
+
+	// LegacySnapAfterDensify reproduces the snap of DensifyVersion 1 (only
+	// the end position moved, after densification; the densified positions
+	// of the end piece still lead to the source vertex), so that geometry
+	// stored with version 1 can be recognised.  Do not use for new data.
+	LegacySnapAfterDensify bool
 
 	// OnRepair, if set, receives every repair made to the source geometry
 	// (BorderSnapTolerance).  It is called synchronously.
@@ -74,7 +81,9 @@ type Options struct {
 // GeodesicTolerance, PreferSourceVertices and BorderSnapTolerance: it
 // changes whenever the same options give different positions, so that
 // callers storing converted geometry can tell when to convert again.
-const DensifyVersion = "1"
+// Version 2: the border junction snap moves the explicit vertex before the
+// end piece is densified (the piece is densified to the cut point).
+const DensifyVersion = "2"
 
 // Repair kinds.
 const (
@@ -84,8 +93,11 @@ const (
 // Repair records one change made to the source geometry.
 type Repair struct {
 	Kind string `json:"kind"`
-	// Ring is the ring of the polygon patch: 0 the exterior, i+1 the i-th
-	// interior ring.
+	// Ring is the 0-based index of the ring over the feature's own source
+	// rings in document order: each polygon's exterior, then its interior
+	// rings (for an airspace: over its volumes' surfaces in document
+	// order; a ring of a contributor airspace is numbered within that
+	// airspace).
 	Ring int `json:"ring"`
 	// Member is the index of the ring's curveMember whose end was moved.
 	Member int `json:"member"`
@@ -111,6 +123,7 @@ type conv struct {
 	// (only with PreferSourceVertices).
 	computed map[[2]float64]bool
 	ring     int // ring being converted (for Repair.Ring)
+	ringBase int // index of the current surface's first ring
 }
 
 // markComputed records the ends of a discretised curve.
