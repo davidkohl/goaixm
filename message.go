@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/convert"
 	"github.com/davidkohl/goaixm/gml"
+	"github.com/davidkohl/goaixm/version"
 	"github.com/davidkohl/goaixm/xmlnode"
 )
 
@@ -17,6 +19,11 @@ type Message struct {
 	Kind string
 	// GMLID is the gml:id of the message.
 	GMLID string
+	// Source tells the version and root of the input document; for a
+	// converted document Kind and GMLID describe the converted message.
+	Source version.Detected
+	// Conversion is the conversion report, nil for native 5.1.1 input.
+	Conversion *convert.Report
 
 	members  []Member
 	byID     map[string]int
@@ -146,8 +153,12 @@ type Member struct {
 	// registration order.
 	Extensions []any
 	// Raw is the member's feature element as standalone, namespace-complete
-	// XML.  Set with Options.KeepRaw and for generic features.
+	// XML.  Set with Options.KeepRaw, for generic features and for
+	// converted members.
 	Raw []byte
+	// Provenance ties a converted member to its source element(s): source
+	// version, kind, key and position.  Nil for native 5.1.1 input.
+	Provenance *convert.Provenance
 }
 
 // Node returns the member's feature element as a lossless tree.  It needs

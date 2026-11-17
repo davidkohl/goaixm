@@ -8,28 +8,22 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/davidkohl/goaixm/version"
 	"github.com/davidkohl/goaixm/xmlnode"
 )
 
 var errNoRaw = errors.New("goaixm: member has no raw XML; set Options.KeepRaw")
 
 type rootInfo struct {
-	kind  string
-	gmlID string
+	kind   string
+	gmlID  string
+	source version.Detected
 }
 
-// stream is the single decoder behind Parse and Stream.  It walks the
-// document token by token, captures each hasMember child as a standalone,
-// namespace-complete element and decodes it with the registry.
-func stream(ctx context.Context, r io.Reader, opts Options, fn func(Member) error) (rootInfo, error) {
-	reg := opts.Registry
-	if reg == nil {
-		reg = defaultRegistry
-	}
-	if opts.MaxBytes > 0 {
-		r = &limitReader{r: r, n: opts.MaxBytes}
-	}
-	warn := func(w Warning) error {
+// warner returns the warning handler of opts: Strict turns a warning into
+// an error, otherwise OnWarning decides.
+func warner(opts Options) func(Warning) error {
+	return func(w Warning) error {
 		if opts.Strict {
 			return w
 		}
@@ -38,6 +32,23 @@ func stream(ctx context.Context, r io.Reader, opts Options, fn func(Member) erro
 		}
 		return nil
 	}
+}
+
+func registryOf(opts Options) *Registry {
+	if opts.Registry == nil {
+		return defaultRegistry
+	}
+	return opts.Registry
+}
+
+// stream is the single decoder of native 5.1.1 messages behind Parse and
+// Stream.  It walks the document token by token, captures each hasMember
+// child as a standalone, namespace-complete element and decodes it with the
+// registry.  A root of another AIXM version fails with
+// ErrUnsupportedVersion.  The caller applies Options.MaxBytes.
+func stream(ctx context.Context, r io.Reader, opts Options, fn func(Member) error) (rootInfo, error) {
+	reg := registryOf(opts)
+	warn := warner(opts)
 
 	var root rootInfo
 	d := xml.NewDecoder(r)
@@ -71,6 +82,11 @@ func stream(ctx context.Context, r io.Reader, opts Options, fn func(Member) erro
 				if a.Name.Space == xmlnode.NSGML && a.Name.Local == "id" {
 					root.gmlID = a.Value
 				}
+			}
+			det, derr := version.FromStart(se)
+			root.source = det
+			if err := checkNative(det, derr); err != nil {
+				return root, err
 			}
 			continue
 		case se.Name.Local == "hasMember":
