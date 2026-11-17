@@ -267,7 +267,11 @@ msg, err := goaixm.ParseFile(ctx, "snapshot45.xml", goaixm.Options{Converters: r
   `geo.BorderStretch` and written inline (default, self-contained
   airspaces) or as a `GeoBorder` reference (`Config.BorderMode`). Derived
   airspaces become `BASE`/`UNION`/… components with `contributorAirspace`.
-  Rings that enclose no area keep their positions in a note.
+  Rings that enclose no area keep their positions in a note. Arc ends
+  moved onto their arc are reported (`arc_end_snapped`), and with
+  `Config.RingCheck` (geo options) every ring is checked as a consumer
+  sees it: rings that cross or touch themselves or double back are
+  reported (`ring_invalid`, with the place); geometry is never repaired.
 - Identity: UUIDv5 over the natural key in the caller's namespace;
   references are computed from the referencing `…Uid`; duplicate keys get
   `#2`, `#3`, … and a `duplicate_key` warning.
@@ -280,7 +284,10 @@ msg, err := goaixm.ParseFile(ctx, "snapshot45.xml", goaixm.Options{Converters: r
   reconciled with the official EUROCONTROL 4.5 to 5.1 mapping.
 - Tests check every emitted code and unit against the vendored 5.1.1
   schema, the property order against its sequences, and a golden report
-  (`testdata/aixm45/*.report.json`, `go test -update`).
+  (`testdata/aixm45/*.report.json`, `go test -update`). A 4.5 transcription
+  of DONLON features (`testdata/aixm45/donlon.xml`) is converted and
+  compared with the DONLON originals value by value and polygon by polygon;
+  every difference is listed with its reason in `donlon_test.go`.
 
 ## Validation
 
@@ -333,6 +340,8 @@ go test -fuzz=FuzzDetect -fuzztime=30s ./version
 go test -fuzz=FuzzStream -fuzztime=30s ./aixm45
 go test -fuzz=FuzzCoordinate -fuzztime=30s ./aixm45
 go test -fuzz=FuzzConvert -fuzztime=30s ./convert/aixm45to51
+go test -fuzz=FuzzAirspaceGeometry -fuzztime=30s ./convert/aixm45to51
+go test -run=- -bench=Convert -benchtime=3x ./convert/aixm45to51
 ```
 
 `internal/testconv` holds a namespace-relabelling converter used only by
@@ -342,7 +351,7 @@ conversion.
 Tests use the EUROCONTROL [DONLON](https://github.com/aixm/donlon)
 reference data and skip when the submodule is missing. The AIXM 4.5 tests
 use small synthetic, hand-written fixtures in `testdata/aixm45/` (fictional
-designators and coordinates). CI also checks gofmt,
+designators and coordinates) and the DONLON transcription. CI also checks gofmt,
 staticcheck and that the generated code is up to date.
 
 ## Limitations
