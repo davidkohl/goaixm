@@ -175,6 +175,10 @@ itself an aggregate as its own components (`AirspaceComponent.Contributor`,
 with their operations, recursively), so that callers combine each level;
 without it, its polygons are packed together unmerged.
 
+`geo.BorderStretch` exposes the border cut on its own (with an option to
+take the shorter way round a closed border), `geo.RhumbLine` densifies a
+rhumb line (WGS-84 loxodrome) into geodesic pieces within a tolerance.
+
 `geo.DensifyVersion` changes whenever the same options give different
 positions, for callers that store converted geometry.
 
@@ -252,8 +256,18 @@ msg, err := goaixm.ParseFile(ctx, "snapshot45.xml", goaixm.Options{Converters: r
 ```
 
 - Coverage: `Org`, `Uni`, `Dpn`, `Vor`/`Dme`/`Ndb`/`Tcn` (plus the `Navaid`
-  derived from `VorUid` collocation), `Obs`, `Ahp`, `Rwy`, `Rdn`. Airspaces
-  and borders and all other kinds are reported as unmapped and dropped.
+  derived from `VorUid` collocation), `Obs`, `Ahp`, `Rwy`, `Rdn`; `Ase`
+  with its boundary (`Abd`) or derivation (`Adg`) and working hours (`Att`)
+  as one `Airspace`, `Gbr` as `GeoBorder`. All other kinds are reported as
+  unmapped and dropped.
+- Airspace geometry: great circles as `GeodesicString`, rhumb lines
+  densified on the loxodrome (`Config.RhumbTolerance`, 1 m), arcs as
+  `ArcByCenterPoint` in geo's signed-sweep convention, circles as
+  `CircleByCenterPoint`, border-following edges cut with
+  `geo.BorderStretch` and written inline (default, self-contained
+  airspaces) or as a `GeoBorder` reference (`Config.BorderMode`). Derived
+  airspaces become `BASE`/`UNION`/… components with `contributorAirspace`.
+  Rings that enclose no area keep their positions in a note.
 - Identity: UUIDv5 over the natural key in the caller's namespace;
   references are computed from the referencing `…Uid`; duplicate keys get
   `#2`, `#3`, … and a `duplicate_key` warning.
