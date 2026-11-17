@@ -207,3 +207,166 @@ list	uom_temp	UomTemperatureType	closed
 code	uom_temp	C	C	goaixm
 code	uom_temp	F	F	goaixm
 code	uom_temp	K	K	goaixm
+#
+# Airspaces
+list	airspace_type	CodeAirspaceType	other
+code	airspace_type	NAS	NAS	goaixm
+code	airspace_type	FIR	FIR	goaixm
+code	airspace_type	FIR-P	FIR_P	goaixm
+code	airspace_type	UIR	UIR	goaixm
+code	airspace_type	UIR-P	UIR_P	goaixm
+code	airspace_type	CTA	CTA	goaixm
+code	airspace_type	CTA-P	CTA_P	goaixm
+code	airspace_type	OCA	OCA	goaixm
+code	airspace_type	OCA-P	OCA_P	goaixm
+code	airspace_type	UTA	UTA	goaixm
+code	airspace_type	UTA-P	UTA_P	goaixm
+code	airspace_type	TMA	TMA	goaixm
+code	airspace_type	TMA-P	TMA_P	goaixm
+code	airspace_type	CTR	CTR	goaixm
+code	airspace_type	CTR-P	CTR_P	goaixm
+code	airspace_type	OTA	OTA	goaixm
+code	airspace_type	SECTOR	SECTOR	goaixm
+code	airspace_type	SECTOR-C	SECTOR_C	goaixm
+code	airspace_type	TSA	TSA	goaixm
+code	airspace_type	CBA	CBA	goaixm
+code	airspace_type	RCA	RCA	goaixm
+code	airspace_type	RAS	RAS	goaixm
+code	airspace_type	AWY	AWY	goaixm
+code	airspace_type	MTR	MTR	goaixm
+code	airspace_type	P	P	goaixm
+code	airspace_type	R	R	goaixm
+code	airspace_type	D	D	goaixm
+code	airspace_type	ADIZ	ADIZ	goaixm
+code	airspace_type	NO-FIR	NO_FIR	goaixm
+code	airspace_type	PART	PART	goaixm
+code	airspace_type	CLASS	CLASS	goaixm
+code	airspace_type	POLITICAL	POLITICAL	goaixm
+code	airspace_type	D-OTHER	D_OTHER	goaixm
+code	airspace_type	TRA	TRA	goaixm
+code	airspace_type	A	A	goaixm
+code	airspace_type	W	W	goaixm
+code	airspace_type	PROTECT	PROTECT	goaixm
+code	airspace_type	AMA	AMA	goaixm
+code	airspace_type	ASR	ASR	goaixm
+code	airspace_type	ADV	ADV	goaixm
+code	airspace_type	UADV	UADV	goaixm
+code	airspace_type	ATZ	ATZ	goaixm
+code	airspace_type	ATZ-P	ATZ_P	goaixm
+code	airspace_type	HTZ	HTZ	goaixm
+code	airspace_type	NAS-P	NAS_P	goaixm
+code	airspace_type	OTHER	OTHER	goaixm
+#
+list	airspace_class	CodeAirspaceClassificationType	closed
+code	airspace_class	A	A	goaixm
+code	airspace_class	B	B	goaixm
+code	airspace_class	C	C	goaixm
+code	airspace_class	D	D	goaixm
+code	airspace_class	E	E	goaixm
+code	airspace_class	F	F	goaixm
+code	airspace_class	G	G	goaixm
+#
+list	vertical_ref	CodeVerticalReferenceType	closed
+code	vertical_ref	HEI	SFC	goaixm
+code	vertical_ref	ALT	MSL	goaixm
+code	vertical_ref	W84	W84	goaixm
+code	vertical_ref	STD	STD	goaixm
+#
+list	aggregation	CodeAirspaceAggregationType	closed
+code	aggregation	UNION	UNION	goaixm
+code	aggregation	INTERS	INTERS	goaixm
+code	aggregation	SUBTR	SUBTR	goaixm
+#
+list	activity	CodeAirspaceActivityType	other
+code	activity	AD_TFC	AD_TFC	goaixm
+code	activity	HELI_TFC	HELI_TFC	goaixm
+code	activity	TRAINING	TRAINING	goaixm
+code	activity	AEROBATICS	AEROBATICS	goaixm
+code	activity	AIRSHOW	AIRSHOW	goaixm
+code	activity	SPORT	SPORT	goaixm
+code	activity	ULM	ULM	goaixm
+code	activity	GLIDER	GLIDING	goaixm
+code	activity	GLIDING	GLIDING	goaixm
+code	activity	PARAGLIDER	PARAGLIDER	goaixm
+code	activity	HANGGLIDING	HANGGLIDING	goaixm
+code	activity	PARACHUTE	PARACHUTE	goaixm
+code	activity	AIR_DROP	AIR_DROP	goaixm
+code	activity	BALLOON	BALLOON	goaixm
+code	activity	RADIOSONDE	RADIOSONDE	goaixm
+code	activity	SPACE_FLIGHT	SPACE_FLIGHT	goaixm
+code	activity	UAV	UAV	goaixm
+code	activity	AERIAL_WORK	AERIAL_WORK	goaixm
+code	activity	CROP_DUSTING	CROP_DUSTING	goaixm
+code	activity	FIRE_FIGHTING	FIRE_FIGHTING	goaixm
+code	activity	MILOPS	MILOPS	goaixm
+code	activity	REFUEL	REFUEL	goaixm
+code	activity	JET_CLIMBING	JET_CLIMBING	goaixm
+code	activity	EXERCISE	EXERCISE	goaixm
+code	activity	TOWING	TOWING	goaixm
+code	activity	NAVAL_EXER	NAVAL_EXER	goaixm
+code	activity	MISSILES	MISSILES	goaixm
+code	activity	AIR_GUN	AIR_GUN	goaixm
+code	activity	ARTILLERY	ARTILLERY	goaixm
+code	activity	SHOOTING	SHOOTING	goaixm
+code	activity	BLASTING	BLASTING	goaixm
+code	activity	WATER_BLASTING	WATER_BLASTING	goaixm
+code	activity	ANTI_HAIL	ANTI_HAIL	goaixm
+code	activity	BIRD	BIRD	goaixm
+code	activity	BIRD_MIGRATION	BIRD_MIGRATION	goaixm
+code	activity	FIREWORK	FIREWORK	goaixm
+code	activity	HI_RADIO	HI_RADIO	goaixm
+code	activity	HI_LIGHT	HI_LIGHT	goaixm
+code	activity	LASER	LASER	goaixm
+code	activity	NATURE	NATURE	goaixm
+code	activity	FAUNA	FAUNA	goaixm
+code	activity	NO_NOISE	NO_NOISE	goaixm
+code	activity	ACCIDENT	ACCIDENT	goaixm
+code	activity	POPULATION	POPULATION	goaixm
+code	activity	VIP	VIP	goaixm
+code	activity	VIP_PRES	VIP_PRES	goaixm
+code	activity	VIP_VICE	VIP_VICE	goaixm
+code	activity	OIL	OIL	goaixm
+code	activity	GAS	GAS	goaixm
+code	activity	REFINERY	REFINERY	goaixm
+code	activity	CHEMICAL	CHEMICAL	goaixm
+code	activity	NUCLEAR	NUCLEAR	goaixm
+code	activity	TECHNICAL	TECHNICAL	goaixm
+code	activity	ATS	ATS	goaixm
+code	activity	PROCEDURE	PROCEDURE	goaixm
+code	activity	OTHER	OTHER	goaixm
+#
+list	border_type	CodeGeoBorderType	other
+code	border_type	ST	STATE	goaixm
+code	border_type	CS	COAST	goaixm
+code	border_type	TW	WATER	goaixm
+code	border_type	RI	RIVER	goaixm
+code	border_type	OTHER	OTHER	goaixm
+#
+# Timesheets
+list	time_ref	CodeTimeReferenceType	closed
+code	time_ref	UTC	UTC	goaixm
+code	time_ref	UTCW	UTC	goaixm
+#
+list	day	CodeDayType	other
+code	day	MON	MON	goaixm
+code	day	TUE	TUE	goaixm
+code	day	WED	WED	goaixm
+code	day	THU	THU	goaixm
+code	day	FRI	FRI	goaixm
+code	day	SAT	SAT	goaixm
+code	day	SUN	SUN	goaixm
+code	day	WD	WORK_DAY	goaixm
+code	day	PWD	BEF_WORK_DAY	goaixm
+code	day	AWD	AFT_WORK_DAY	goaixm
+code	day	LH	HOL	goaixm
+code	day	PLH	BEF_HOL	goaixm
+code	day	ALH	AFT_HOL	goaixm
+code	day	ANY	ANY	goaixm
+#
+list	time_event	CodeTimeEventType	other
+code	time_event	SR	SR	goaixm
+code	time_event	SS	SS	goaixm
+#
+list	time_comb	CodeTimeEventCombinationType	other
+code	time_comb	E	EARLIEST	goaixm
+code	time_comb	L	LATEST	goaixm

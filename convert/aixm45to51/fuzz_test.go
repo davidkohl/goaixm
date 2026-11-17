@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
 	"github.com/davidkohl/goaixm/convert"
 	"github.com/davidkohl/goaixm/convert/aixm45to51"
+	"github.com/davidkohl/goaixm/geo"
 )
 
 // FuzzConvert verifies that the converter never panics on arbitrary input,
@@ -20,7 +22,7 @@ import (
 // checks it) and that its output decodes as AIXM 5.1.1 without warnings.
 // Run with: go test -fuzz=FuzzConvert ./convert/aixm45to51
 func FuzzConvert(f *testing.F) {
-	for _, name := range []string{"basic.xml", "edge.xml"} {
+	for _, name := range []string{"basic.xml", "edge.xml", "airspace.xml"} {
 		b, err := os.ReadFile(filepath.Join(fixtures, name))
 		if err != nil {
 			f.Fatal(err)
@@ -91,7 +93,61 @@ func TestLargeFixture(t *testing.T) {
 		t.Skip("short")
 	}
 	res := convertBytes(t, largeFixture(4000), aixm45to51.Config{})
-	if res.rep.Targets["VerticalStructure"] != 4000 || res.rep.Targets["DesignatedPoint"] != 1000 || res.rep.Kinds["Ase"].Dropped != 20 {
+	if res.rep.Targets["VerticalStructure"] != 4000 || res.rep.Targets["DesignatedPoint"] != 1000 || res.rep.Targets["Airspace"] != 20 {
 		t.Errorf("targets %v", res.rep.Targets)
 	}
+}
+
+// FuzzAirspaceGeometry builds boundaries from arbitrary vertex sequences
+// (every codeType, arcs of any radius about nearby centres, border
+// stretches along a fictional border, duplicate and coincident vertices)
+// in both border modes: the conversion never fails or panics, the output
+// decodes, and geo converts every airspace without panicking.
+// Run with: go test -fuzz=FuzzAirspaceGeometry ./convert/aixm45to51
+func FuzzAirspaceGeometry(f *testing.F) {
+	f.Add([]byte{0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 255, 255, 0, 0})
+	f.Add([]byte{2, 128, 0, 5, 10, 0, 0, 128, 0, 0, 3, 255, 128, 5, 200, 0, 128, 128, 0, 0})
+	f.Add([]byte{4, 0, 26, 0, 0, 0, 0, 230, 0, 0, 0, 200, 230, 0, 0, 0, 200, 26, 0, 0})
+	f.Add([]byte{1, 0, 0, 0, 0, 1, 255, 0, 0, 0, 1, 255, 255, 0, 0, 1, 0, 255, 0, 0})
+	types := []string{"GRC", "RHL", "CWA", "CCA", "FNT", "XYZ"}
+	border := `<Gbr><GbrUid><txtName>FUZZ BORDER</txtName></GbrUid><codeType>ST</codeType>` +
+		`<Gbv><codeType>GRC</codeType><geoLat>10.5N</geoLat><geoLong>020.0E</geoLong><codeDatum>WGE</codeDatum></Gbv>` +
+		`<Gbv><codeType>RHL</codeType><geoLat>10.6N</geoLat><geoLong>020.25E</geoLong><codeDatum>WGE</codeDatum></Gbv>` +
+		`<Gbv><codeType>END</codeType><geoLat>10.5N</geoLat><geoLong>020.5E</geoLong><codeDatum>WGE</codeDatum></Gbv></Gbr>`
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 5*64 {
+			return
+		}
+		var b strings.Builder
+		b.WriteString(`<AIXM-Snapshot version="4.5" effective="2030-01-24T00:00:00Z">` + border +
+			`<Ase><AseUid><codeType>R</codeType><codeId>XF</codeId></AseUid><txtName>F</txtName></Ase><Abd><AbdUid><AseUid><codeType>R</codeType><codeId>XF</codeId></AseUid></AbdUid>`)
+		for i := 0; i+5 <= len(data); i += 5 {
+			d := data[i : i+5]
+			lat, lon := 10+float64(d[1])/255*0.6, 20+float64(d[2])/255*0.6
+			fmt.Fprintf(&b, `<Avx><codeType>%s</codeType><geoLat>%.6fN</geoLat><geoLong>%010.6fE</geoLong><codeDatum>WGE</codeDatum>`, types[int(d[0])%len(types)], lat, lon)
+			switch types[int(d[0])%len(types)] {
+			case "CWA", "CCA":
+				fmt.Fprintf(&b, `<geoLatArc>%.6fN</geoLatArc><geoLongArc>%010.6fE</geoLongArc><valRadiusArc>%d</valRadiusArc><uomRadiusArc>KM</uomRadiusArc>`,
+					lat+float64(int(d[4])-128)/2000, lon+float64(int(d[3])-128)/2000, 1+int(d[3])%40)
+			case "FNT":
+				b.WriteString(`<GbrUid><txtName>FUZZ BORDER</txtName></GbrUid>`)
+			}
+			b.WriteString(`</Avx>`)
+		}
+		b.WriteString(`</Abd></AIXM-Snapshot>`)
+		for _, mode := range []aixm45to51.BorderMode{aixm45to51.Inline, aixm45to51.Reference} {
+			var buf bytes.Buffer
+			c := aixm45to51.New(aixm45to51.Config{Namespace: ns, BorderMode: mode})
+			if _, err := convert.Run(context.Background(), c, convert.BytesSource("fuzz.xml", []byte(b.String())), convert.XMLWriter(&buf)); err != nil {
+				t.Fatalf("convert: %v\n%s", err, b.String())
+			}
+			msg, err := goaixm.Parse(context.Background(), bytes.NewReader(buf.Bytes()), goaixm.Options{Strict: true})
+			if err != nil {
+				t.Fatalf("output does not decode: %v\n%s", err, buf.Bytes())
+			}
+			for _, ft := range msg.ByKind("Airspace") {
+				_, _ = geo.Options{ArcTolerance: 5, GeodesicTolerance: 5}.AirspaceToGeoJSONWithRefs(ft.(*aixm.Airspace), msg)
+			}
+		}
+	})
 }

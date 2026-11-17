@@ -1,0 +1,956 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic AIXM 4.5 snapshot of airspaces and borders for goaixm's
+     tests: every designator, name, border and coordinate is made up.
+     Released under the licence of goaixm. -->
+<AIXM-Snapshot version="4.5" origin="Example producer" created="2030-01-02T10:00:00Z" effective="2030-01-24T00:00:00Z">
+    <Gbr>
+        <GbrUid mid="3001">
+            <txtName>EXAMPLE RIVER</txtName>
+        </GbrUid>
+        <codeType>ST</codeType>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>110000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>110300N</geoLat>
+            <geoLong>0201500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>105700N</geoLat>
+            <geoLong>0203000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>110300N</geoLat>
+            <geoLong>0204500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>END</codeType>
+            <geoLat>110000N</geoLat>
+            <geoLong>0210000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+    </Gbr>
+    <Gbr>
+        <GbrUid mid="3002">
+            <txtName>EXAMPLE ISLAND</txtName>
+        </GbrUid>
+        <codeType>CS</codeType>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>115400N</geoLat>
+            <geoLong>0202400E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>115400N</geoLat>
+            <geoLong>0203600E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>120600N</geoLat>
+            <geoLong>0203600E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>GRC</codeType>
+            <geoLat>120600N</geoLat>
+            <geoLong>0202400E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>END</codeType>
+            <geoLat>115400N</geoLat>
+            <geoLong>0202400E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+    </Gbr>
+    <Gbr>
+        <GbrUid mid="3003">
+            <txtName>EXAMPLE PARALLEL</txtName>
+        </GbrUid>
+        <codeType>TW</codeType>
+        <Gbv>
+            <codeType>RHL</codeType>
+            <geoLat>093000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+        <Gbv>
+            <codeType>END</codeType>
+            <geoLat>093000N</geoLat>
+            <geoLong>0210000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Gbv>
+    </Gbr>
+    <Ase>
+        <AseUid mid="2001">
+            <codeType>R</codeType>
+            <codeId>XR1</codeId>
+        </AseUid>
+        <txtName>EXAMPLE ONE</txtName>
+        <txtLocalType>EXAMPLE</txtLocalType>
+        <codeClass>D</codeClass>
+        <codeActivity>GLIDER</codeActivity>
+        <codeLocInd>XXXX</codeLocInd>
+        <codeDistVerUpper>STD</codeDistVerUpper>
+        <valDistVerUpper>065</valDistVerUpper>
+        <uomDistVerUpper>FL</uomDistVerUpper>
+        <codeDistVerLower>HEI</codeDistVerLower>
+        <valDistVerLower>0</valDistVerLower>
+        <uomDistVerLower>FT</uomDistVerLower>
+        <codeDistVerMax>HEI</codeDistVerMax>
+        <valDistVerMax>1000</valDistVerMax>
+        <uomDistVerMax>FT</uomDistVerMax>
+        <codeDistVerMnm>HEI</codeDistVerMnm>
+        <valDistVerMnm>500</valDistVerMnm>
+        <uomDistVerMnm>FT</uomDistVerMnm>
+        <Att>
+            <codeWorkHr>H24</codeWorkHr>
+            <txtRmkWorkHr>Continuous.</txtRmkWorkHr>
+        </Att>
+        <txtRmk>Example remark.</txtRmk>
+        <valCrc>0A0B0C0D</valCrc>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2002">
+            <AseUid mid="2001">
+                <codeType>R</codeType>
+                <codeId>XR1</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0201200E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101200N</geoLat>
+            <geoLong>0201200E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101200N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <txtRmk>Boundary remark.</txtRmk>
+    </Abd>
+    <Ase>
+        <AseUid mid="2003">
+            <codeType>R</codeType>
+            <codeId>XR2</codeId>
+        </AseUid>
+        <txtName>EXAMPLE TWO</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>2500</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+        <Att>
+            <codeWorkHr>HJ</codeWorkHr>
+        </Att>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2004">
+            <AseUid mid="2003">
+                <codeType>R</codeType>
+                <codeId>XR2</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101200N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101200N</geoLat>
+            <geoLong>0201200E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0201200E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101200N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2005">
+            <codeType>D</codeType>
+            <codeId>XRHL</codeId>
+        </AseUid>
+        <txtName>EXAMPLE RHUMB</txtName>
+        <codeDistVerUpper>STD</codeDistVerUpper>
+        <valDistVerUpper>100</valDistVerUpper>
+        <uomDistVerUpper>FL</uomDistVerUpper>
+        <codeDistVerLower>STD</codeDistVerLower>
+        <valDistVerLower>050</valDistVerLower>
+        <uomDistVerLower>FL</uomDistVerLower>
+        <Att>
+            <codeWorkHr>TIMSH</codeWorkHr>
+            <Timsh>
+                <codeTimeRef>UTCW</codeTimeRef>
+                <dateValidWef>01-01</dateValidWef>
+                <dateValidTil>31-12</dateValidTil>
+                <codeDay>WD</codeDay>
+                <codeDayTil>FRI</codeDayTil>
+                <timeWef>07:00</timeWef>
+                <timeTil>19:00</timeTil>
+            </Timsh>
+            <Timsh>
+                <codeTimeRef>UTC</codeTimeRef>
+                <dateValidWef>SDLST</dateValidWef>
+                <dateValidTil>EDLST</dateValidTil>
+                <codeDay>SAT</codeDay>
+                <codeEventWef>SR</codeEventWef>
+                <timeRelEventWef>-30</timeRelEventWef>
+                <codeCombWef>E</codeCombWef>
+                <timeWef>06:00</timeWef>
+                <codeEventTil>SS</codeEventTil>
+                <timeRelEventTil>30</timeRelEventTil>
+                <codeCombTil>L</codeCombTil>
+                <timeTil>25:00</timeTil>
+            </Timsh>
+            <txtRmkWorkHr>Weekdays and Saturdays.</txtRmkWorkHr>
+        </Att>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2006">
+            <AseUid mid="2005">
+                <codeType>D</codeType>
+                <codeId>XRHL</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>RHL</codeType>
+            <geoLat>103000N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103000N</geoLat>
+            <geoLong>0210000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>RHL</codeType>
+            <geoLat>104800N</geoLat>
+            <geoLong>0210000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>104800N</geoLat>
+            <geoLong>0200000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2007">
+            <codeType>P</codeType>
+            <codeId>XARC</codeId>
+        </AseUid>
+        <txtName>EXAMPLE ARC</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>3000</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+        <Att>
+            <codeWorkHr>HX</codeWorkHr>
+        </Att>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2008">
+            <AseUid mid="2007">
+                <codeType>P</codeType>
+                <codeId>XARC</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>CWA</codeType>
+            <geoLat>100501.39N</geoLat>
+            <geoLong>0220000.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <geoLatArc>100000N</geoLatArc>
+            <geoLongArc>0220000E</geoLongArc>
+            <valRadiusArc>5</valRadiusArc>
+            <uomRadiusArc>NM</uomRadiusArc>
+            <VorUidCen mid="77">
+                <codeId>XVR</codeId>
+                <geoLat>100000N</geoLat>
+                <geoLong>0220000E</geoLong>
+            </VorUidCen>
+            <txtRmk>Arc about the example VOR.</txtRmk>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>095959.96N</geoLat>
+            <geoLong>0220504.05E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <DpnUidSpn mid="78">
+                <codeId>XPNT</codeId>
+                <geoLat>095959.96N</geoLat>
+                <geoLong>0220504.05E</geoLong>
+            </DpnUidSpn>
+            <valCrc>01020304</valCrc>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0220000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2009">
+            <codeType>P</codeType>
+            <codeId>XCCA</codeId>
+        </AseUid>
+        <txtName>EXAMPLE CCA</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>3000</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2010">
+            <AseUid mid="2009">
+                <codeType>P</codeType>
+                <codeId>XCCA</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>CCA</codeType>
+            <geoLat>102959.96N</geoLat>
+            <geoLong>0220504.53E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <geoLatArc>103000N</geoLatArc>
+            <geoLongArc>0220000E</geoLongArc>
+            <valRadiusArc>9.26</valRadiusArc>
+            <uomRadiusArc>KM</uomRadiusArc>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103501.38N</geoLat>
+            <geoLong>0220000.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103000N</geoLat>
+            <geoLong>0220000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2011">
+            <codeType>CTR</codeType>
+            <codeId>XCIR</codeId>
+        </AseUid>
+        <txtName>EXAMPLE CIRCLE</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>2000</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+        <codeDistVerLower>HEI</codeDistVerLower>
+        <valDistVerLower>0</valDistVerLower>
+        <uomDistVerLower>FT</uomDistVerLower>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2012">
+            <AseUid mid="2011">
+                <codeType>CTR</codeType>
+                <codeId>XCIR</codeId>
+            </AseUid>
+        </AbdUid>
+        <Circle>
+            <geoLatCen>101500.00N</geoLatCen>
+            <geoLongCen>0221500.00E</geoLongCen>
+            <codeDatum>WGE</codeDatum>
+            <valRadius>5</valRadius>
+            <uomRadius>NM</uomRadius>
+            <valCrc>0A0B0C0E</valCrc>
+        </Circle>
+    </Abd>
+    <Ase>
+        <AseUid mid="2013">
+            <codeType>RAS</codeType>
+            <codeId>XFNT</codeId>
+        </AseUid>
+        <txtName>EXAMPLE BORDER AREA</txtName>
+        <codeDistVerUpper>STD</codeDistVerUpper>
+        <valDistVerUpper>195</valDistVerUpper>
+        <uomDistVerUpper>FL</uomDistVerUpper>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2014">
+            <AseUid mid="2013">
+                <codeType>RAS</codeType>
+                <codeId>XFNT</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>FNT</codeType>
+            <geoLat>110300.00N</geoLat>
+            <geoLong>0201500.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <GbrUid mid="3001">
+                <txtName>EXAMPLE RIVER</txtName>
+            </GbrUid>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>110300.00N</geoLat>
+            <geoLong>0204500.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103600N</geoLat>
+            <geoLong>0204500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103600N</geoLat>
+            <geoLong>0201500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2015">
+            <codeType>RAS</codeType>
+            <codeId>XFAR</codeId>
+        </AseUid>
+        <txtName>EXAMPLE FAR</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2016">
+            <AseUid mid="2015">
+                <codeType>RAS</codeType>
+                <codeId>XFAR</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>FNT</codeType>
+            <geoLat>110316.27N</geoLat>
+            <geoLong>0201500.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <GbrUid mid="3001">
+                <txtName>EXAMPLE RIVER</txtName>
+            </GbrUid>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>110300.00N</geoLat>
+            <geoLong>0204500.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103600N</geoLat>
+            <geoLong>0204500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2017">
+            <codeType>RAS</codeType>
+            <codeId>XMISS</codeId>
+        </AseUid>
+        <txtName>EXAMPLE MISSING</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2018">
+            <AseUid mid="2017">
+                <codeType>RAS</codeType>
+                <codeId>XMISS</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>FNT</codeType>
+            <geoLat>110300N</geoLat>
+            <geoLong>0201500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <GbrUid mid="3999">
+                <txtName>EXAMPLE NOWHERE</txtName>
+            </GbrUid>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>110300N</geoLat>
+            <geoLong>0204500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>103600N</geoLat>
+            <geoLong>0204500E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2019">
+            <codeType>RAS</codeType>
+            <codeId>XISL</codeId>
+        </AseUid>
+        <txtName>EXAMPLE ISLAND AREA</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2020">
+            <AseUid mid="2019">
+                <codeType>RAS</codeType>
+                <codeId>XISL</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>FNT</codeType>
+            <geoLat>115400N</geoLat>
+            <geoLong>0202600E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <GbrUid mid="3002">
+                <txtName>EXAMPLE ISLAND</txtName>
+            </GbrUid>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>120000N</geoLat>
+            <geoLong>0202400E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>120000N</geoLat>
+            <geoLong>0201800E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>114800N</geoLat>
+            <geoLong>0201800E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>114800N</geoLat>
+            <geoLong>0202600E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2021">
+            <codeType>D</codeType>
+            <codeId>XZERO</codeId>
+        </AseUid>
+        <txtName>EXAMPLE ZERO ARC</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2022">
+            <AseUid mid="2021">
+                <codeType>D</codeType>
+                <codeId>XZERO</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>CWA</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0230000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <geoLatArc>095000N</geoLatArc>
+            <geoLongArc>0230000E</geoLongArc>
+            <valRadiusArc>10</valRadiusArc>
+            <uomRadiusArc>NM</uomRadiusArc>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0230000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0231000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101000N</geoLat>
+            <geoLong>0231000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2023">
+            <codeType>D</codeType>
+            <codeId>XMISR</codeId>
+        </AseUid>
+        <txtName>EXAMPLE MISMATCH</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2024">
+            <AseUid mid="2023">
+                <codeType>D</codeType>
+                <codeId>XMISR</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>CWA</codeType>
+            <geoLat>100501.39N</geoLat>
+            <geoLong>0220000.00E</geoLong>
+            <codeDatum>WGE</codeDatum>
+            <geoLatArc>100000N</geoLatArc>
+            <geoLongArc>0220000E</geoLongArc>
+            <valRadiusArc>6</valRadiusArc>
+            <uomRadiusArc>NM</uomRadiusArc>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>095959.96N</geoLat>
+            <geoLong>0220504.05E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0220000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2025">
+            <codeType>D</codeType>
+            <codeId>XBAD</codeId>
+        </AseUid>
+        <txtName>EXAMPLE BAD VERTEX</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2026">
+            <AseUid mid="2025">
+                <codeType>D</codeType>
+                <codeId>XBAD</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0240000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>999999N</geoLat>
+            <geoLong>0240000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>XYZ</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0241000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101000N</geoLat>
+            <geoLong>0241000E</geoLong>
+            <codeDatum>U</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2027">
+            <codeType>D-OTHER</codeType>
+            <codeId>XPT</codeId>
+        </AseUid>
+        <txtName>EXAMPLE POINT</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>1000</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2028">
+            <AseUid mid="2027">
+                <codeType>D-OTHER</codeType>
+                <codeId>XPT</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101000N</geoLat>
+            <geoLong>0250000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2029">
+            <codeType>D-OTHER</codeType>
+            <codeId>XDUP</codeId>
+        </AseUid>
+        <txtName>EXAMPLE DUP A</txtName>
+    </Ase>
+    <Ase>
+        <AseUid mid="2030">
+            <codeType>D-OTHER</codeType>
+            <codeId>XDUP</codeId>
+        </AseUid>
+        <txtName>EXAMPLE DUP B</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2032">
+            <AseUid mid="2030">
+                <codeType>D-OTHER</codeType>
+                <codeId>XDUP</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0260000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>101000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Abd>
+        <AbdUid mid="2031">
+            <AseUid mid="2029">
+                <codeType>D-OTHER</codeType>
+                <codeId>XDUP</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>110000N</geoLat>
+            <geoLong>0260000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>110000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>111000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2040">
+            <codeType>SECTOR-C</codeType>
+            <codeId>XSEC</codeId>
+        </AseUid>
+        <txtName>EXAMPLE SECTOR</txtName>
+    </Ase>
+    <Adg>
+        <AdgUid mid="2041">
+            <AseUid mid="2040">
+                <codeType>SECTOR-C</codeType>
+                <codeId>XSEC</codeId>
+            </AseUid>
+        </AdgUid>
+        <AseUidBase mid="2001">
+            <codeType>R</codeType>
+            <codeId>XR1</codeId>
+        </AseUidBase>
+        <codeOpr>UNION</codeOpr>
+        <AseUidComponent mid="2003">
+            <codeType>R</codeType>
+            <codeId>XR2</codeId>
+        </AseUidComponent>
+        <codeOpr>UNION</codeOpr>
+        <AseUidComponent mid="2005">
+            <codeType>D</codeType>
+            <codeId>XRHL</codeId>
+        </AseUidComponent>
+    </Adg>
+    <Ase>
+        <AseUid mid="2042">
+            <codeType>TMA</codeType>
+            <codeId>XSAME</codeId>
+        </AseUid>
+        <txtName>EXAMPLE SAME</txtName>
+        <codeDistVerUpper>STD</codeDistVerUpper>
+        <valDistVerUpper>115</valDistVerUpper>
+        <uomDistVerUpper>FL</uomDistVerUpper>
+        <codeDistVerLower>STD</codeDistVerLower>
+        <valDistVerLower>065</valDistVerLower>
+        <uomDistVerLower>FL</uomDistVerLower>
+    </Ase>
+    <Adg>
+        <AdgUid>
+            <AseUid mid="2042">
+                <codeType>TMA</codeType>
+                <codeId>XSAME</codeId>
+            </AseUid>
+        </AdgUid>
+        <AseUidSameExtent mid="2001">
+            <codeType>R</codeType>
+            <codeId>XR1</codeId>
+        </AseUidSameExtent>
+    </Adg>
+    <Ase>
+        <AseUid mid="2043">
+            <codeType>D</codeType>
+            <codeId>XNONE</codeId>
+        </AseUid>
+        <txtName>EXAMPLE NONE</txtName>
+        <codeDistVerUpper>ALT</codeDistVerUpper>
+        <valDistVerUpper>1500</valDistVerUpper>
+        <uomDistVerUpper>FT</uomDistVerUpper>
+    </Ase>
+    <Ase>
+        <AseUid mid="2044">
+            <codeType>D</codeType>
+            <codeId>XBOTH</codeId>
+        </AseUid>
+        <txtName>EXAMPLE BOTH</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2045">
+            <AseUid mid="2044">
+                <codeType>D</codeType>
+                <codeId>XBOTH</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>120000N</geoLat>
+            <geoLong>0260000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>120000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>121000N</geoLat>
+            <geoLong>0261000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Adg>
+        <AdgUid>
+            <AseUid mid="2044">
+                <codeType>D</codeType>
+                <codeId>XBOTH</codeId>
+            </AseUid>
+        </AdgUid>
+        <AseUidSameExtent mid="2001">
+            <codeType>R</codeType>
+            <codeId>XR1</codeId>
+        </AseUidSameExtent>
+    </Adg>
+    <Abd>
+        <AbdUid mid="2050">
+            <AseUid mid="2049">
+                <codeType>D</codeType>
+                <codeId>XGONE</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0270000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Adg>
+        <AdgUid>
+            <AseUid mid="2049">
+                <codeType>D</codeType>
+                <codeId>XGONE</codeId>
+            </AseUid>
+        </AdgUid>
+        <AseUidSameExtent mid="2001">
+            <codeType>R</codeType>
+            <codeId>XR1</codeId>
+        </AseUidSameExtent>
+    </Adg>
+    <Abd>
+        <AbdUid mid="2051">
+            <AseUid mid="2001">
+                <codeType>R</codeType>
+                <codeId>XR1</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0270000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+    </Abd>
+    <Ase>
+        <AseUid mid="2052">
+            <codeType>D</codeType>
+            <codeId>XCV</codeId>
+        </AseUid>
+        <txtName>EXAMPLE CIRCLE AND VERTEX</txtName>
+    </Ase>
+    <Abd>
+        <AbdUid mid="2053">
+            <AseUid mid="2052">
+                <codeType>D</codeType>
+                <codeId>XCV</codeId>
+            </AseUid>
+        </AbdUid>
+        <Avx>
+            <codeType>GRC</codeType>
+            <geoLat>100000N</geoLat>
+            <geoLong>0280000E</geoLong>
+            <codeDatum>WGE</codeDatum>
+        </Avx>
+        <Circle>
+            <geoLatCen>100000N</geoLatCen>
+            <geoLongCen>0280000E</geoLongCen>
+            <codeDatum>WGE</codeDatum>
+            <valRadius>2</valRadius>
+            <uomRadius>KM</uomRadius>
+        </Circle>
+    </Abd>
+</AIXM-Snapshot>

@@ -116,7 +116,7 @@ var probes = []string{"", "A", "Z", "a", "0", "9", "É", "é", " ", "AB CD", "A-
 // types against the schema on a set of probe strings.
 func TestTextTypesAgainstXSD(t *testing.T) {
 	types := xsdTypes(t)
-	for _, tt := range []textType{ttName, ttDesig, ttDpnDesig, ttNavDesig, ttAhpDesig, ttOrgDesig, ttICAO, ttIATA, ttNote} {
+	for _, tt := range []textType{ttName, ttDesig, ttDpnDesig, ttNavDesig, ttAhpDesig, ttOrgDesig, ttICAO, ttIATA, ttNote, ttAseDesig, ttTime, ttDate} {
 		f := facets(types, strings.TrimSuffix(tt.name, "Type")+"BaseType")
 		var re *regexp.Regexp
 		if p, ok := f["pattern"]; ok {
@@ -135,7 +135,8 @@ func TestTextTypesAgainstXSD(t *testing.T) {
 			}
 			return re == nil || re.MatchString(s)
 		}
-		for _, s := range append(probes, strings.Repeat("A", 61), strings.Repeat("A", 17), strings.Repeat("A", 13)) {
+		for _, s := range append(probes, strings.Repeat("A", 61), strings.Repeat("A", 17), strings.Repeat("A", 13), strings.Repeat("A", 11),
+			"00:00", "23:59", "24:00", "24:01", "7:00", "12:60", "01-01", "31-12", "30-02", "31-04", "SDLST", "EDLST", "00-01", "1-1") {
 			if tt.valid(s) != check(s) {
 				t.Errorf("%s: %q valid %v here, %v in the schema (%v)", tt.name, s, tt.valid(s), check(s), f)
 			}
@@ -240,8 +241,14 @@ func TestSchemaOrder(t *testing.T) {
 		"AirportHeliport": orderAhp, "City": orderCity, "AirportHeliportResponsibilityOrganisation": orderAhpResp,
 		"AuthorityForNavaidEquipment": orderAuthority, "NavaidComponent": orderComponent, "Runway": orderRunway,
 		"SurfaceCharacteristics": orderSurface, "RunwayDirection": orderRdn,
+		"Airspace": orderAirspace, "AirspaceGeometryComponent": orderGeomComp, "AirspaceVolume": orderVolume,
+		"AirspaceVolumeDependency": orderDependency, "AirspaceLayerClass": orderLayerClass, "Timesheet": orderTimesheet,
+		"GeoBorder": orderGeoBorder, "AirspaceActivation": orderActivation,
 	} {
 		schema := expand(g)
+		if g == "AirspaceActivation" {
+			schema = append(expand("PropertiesWithSchedule"), schema...)
+		}
 		if strings.Join(schema, ",") != strings.Join(order, ",") {
 			t.Errorf("%s: order\n %v\nschema\n %v", g, order, schema)
 		}

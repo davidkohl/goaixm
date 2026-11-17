@@ -36,6 +36,9 @@ type elem struct {
 	base, key, uuid string
 	// datumNote is the WARNING note text written for a non-WGS-84 datum.
 	datumNote string
+	// qual qualifies the report paths below an element, e.g.
+	// "[codeType=RHL]" for an Avx.
+	qual map[*xmlnode.Node]string
 }
 
 // set marks a leaf; the first mark wins.
@@ -87,7 +90,7 @@ func (e *elem) finish() {
 	if sk == "" {
 		sk = fmt.Sprintf("[%d]", e.index)
 	}
-	convert.WalkLeaves(e.n, func(l convert.Leaf) {
+	qualified(e.n, e.qual, func(l convert.Leaf) {
 		m, ok := e.marks[leafID{l.Node, l.Attr}]
 		if !ok {
 			m = mark{rule(e.fallback).Outcome, e.fallback, ""}

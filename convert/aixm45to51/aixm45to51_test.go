@@ -120,6 +120,7 @@ func TestConvertBasic(t *testing.T) {
 	wantTargets := map[string]int{
 		"OrganisationAuthority": 1, "AirportHeliport": 1, "Runway": 2, "RunwayDirection": 1, "Unit": 2,
 		"DesignatedPoint": 3, "VOR": 2, "DME": 2, "TACAN": 2, "NDB": 1, "Navaid": 5, "VerticalStructure": 3,
+		"Airspace": 1, "GeoBorder": 1,
 	}
 	if got, _ := json.Marshal(rep.Targets); string(got) != mustJSON(wantTargets) {
 		t.Errorf("targets %s", got)
@@ -233,7 +234,7 @@ func TestConvertBasic(t *testing.T) {
 	}
 
 	// Data problems become issues, never silent.
-	for code, n := range map[string]int{"dangling_ref": 2, "code_unknown": 3, "value_invalid": 2, "kind_unmapped": 4, "datum_missing": 0} {
+	for code, n := range map[string]int{"dangling_ref": 2, "code_unknown": 3, "value_invalid": 2, "kind_unmapped": 1, "datum_missing": 0} {
 		got := 0
 		for _, i := range issues(rep, code) {
 			got += i.Count
@@ -243,18 +244,21 @@ func TestConvertBasic(t *testing.T) {
 		}
 	}
 
-	// Accounting: phase 1b and later kinds are dropped, all their leaves
-	// unmapped; every element is accounted for.
-	for kind, rule := range map[string]string{"Ase": "PH1B", "Abd": "PH1B", "Gbr": "PH1B", "Ser": "LATER"} {
-		k := rep.Kinds[kind]
-		if k == nil || k.Dropped != 1 || k.Out != 0 {
-			t.Errorf("%s: %+v", kind, k)
-			continue
-		}
+	// Accounting: later kinds are dropped, all their leaves unmapped;
+	// airspaces and borders are converted, their boundaries merged; every
+	// element is accounted for.
+	if k := rep.Kinds["Ser"]; k == nil || k.Dropped != 1 || k.Out != 0 {
+		t.Errorf("Ser: %+v", k)
+	} else {
 		for p, e := range k.Elements {
-			if e.Rule != rule || e.Outcomes[convert.Unmapped] == 0 || len(e.Outcomes) != 1 {
-				t.Errorf("%s %s: %+v", kind, p, e)
+			if e.Rule != "LATER" || e.Outcomes[convert.Unmapped] == 0 || len(e.Outcomes) != 1 {
+				t.Errorf("Ser %s: %+v", p, e)
 			}
+		}
+	}
+	for kind, want := range map[string][3]int{"Ase": {1, 0, 0}, "Gbr": {1, 0, 0}, "Abd": {0, 1, 0}} {
+		if k := rep.Kinds[kind]; k == nil || k.Out != want[0] || k.Merged != want[1] || k.Dropped != want[2] {
+			t.Errorf("%s: %+v", kind, k)
 		}
 	}
 	if k := rep.Kinds["Obs"]; k.In != 3 || k.Out != 3 || k.Defaults != 3 {
@@ -448,9 +452,9 @@ func TestGoaixmOptions(t *testing.T) {
 // TestRulesUsed: every rule of the table is exercised by a fixture, except
 // the policy rules that have no leaf of their own.
 func TestRulesUsed(t *testing.T) {
-	policy := map[string]bool{"ID-KEY": true, "TS-SEQ": true, "NAV-NAVAID": true, "GEN-VALUE": true, "GEN-CODE": true}
+	policy := map[string]bool{"ID-KEY": true, "TS-SEQ": true, "NAV-NAVAID": true, "GEN-VALUE": true, "GEN-CODE": true, "ASE-GEOM": true}
 	used := map[string]bool{}
-	for _, f := range []string{"basic.xml", "edge.xml"} {
+	for _, f := range []string{"basic.xml", "edge.xml", "airspace.xml"} {
 		res := convertBytes(t, fixture(t, f), aixm45to51.Config{})
 		for _, k := range res.rep.Kinds {
 			for _, e := range k.Elements {
@@ -468,28 +472,30 @@ func TestRulesUsed(t *testing.T) {
 	}
 }
 
-// TestGoldenReport compares the report of basic.xml with
-// testdata/aixm45/basic.report.json (go test -update rewrites it).  The
+// TestGoldenReport compares the reports of basic.xml and airspace.xml
+// with testdata/aixm45/*.report.json (go test -update rewrites them).  The
 // module version is not part of the comparison.
 func TestGoldenReport(t *testing.T) {
-	res := convertBytes(t, fixture(t, "basic.xml"), aixm45to51.Config{})
-	res.rep.Converter.Module = ""
-	got, err := json.MarshalIndent(res.rep, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = append(got, '\n')
-	path := filepath.Join(fixtures, "basic.report.json")
-	if *update {
-		if err := os.WriteFile(path, got, 0o644); err != nil {
+	for _, name := range []string{"basic", "airspace"} {
+		res := convertBytes(t, fixture(t, name+".xml"), aixm45to51.Config{})
+		res.rep.Converter.Module = ""
+		got, err := json.MarshalIndent(res.rep, "", "  ")
+		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Errorf("report differs from %s (run go test -update and review the diff)", path)
+		got = append(got, '\n')
+		path := filepath.Join(fixtures, name+".report.json")
+		if *update {
+			if err := os.WriteFile(path, got, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("report differs from %s (run go test -update and review the diff)", path)
+		}
 	}
 }

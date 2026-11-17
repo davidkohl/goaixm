@@ -30,9 +30,19 @@
 // an error issue per feature.
 //
 // Coverage (this version): Org, Uni, Dpn, Vor, Dme, Ndb, Tcn (with the
-// derived Navaid), Obs, Ahp, Rwy, Rdn.  Airspaces and borders (Ase, Abd,
-// Adg, Gbr, …) and every other kind are reported per leaf as unmapped
-// (rules PH1B and LATER) and dropped.  AIXM-Update documents are refused.
+// derived Navaid), Obs, Ahp, Rwy, Rdn; Ase with its boundary (Abd) or
+// derivation (Adg) and its working hours (Att) as one Airspace; Gbr as
+// GeoBorder.  Every other kind is reported per leaf as unmapped (rule
+// LATER) and dropped.  AIXM-Update documents are refused.
+//
+// Geometry: boundary vertices (Avx) become one closed gml:Ring: great
+// circles (GRC) as gml:GeodesicString, rhumb lines (RHL) densified into
+// the geodesic string (Config.RhumbTolerance), arcs (CWA, CCA) as
+// gml:ArcByCenterPoint with start and end bearings in goaixm's signed-sweep
+// convention (see geo), Abd/Circle as gml:CircleByCenterPoint, and border
+// stretches (FNT) cut with geo.BorderStretch and written inline or as a
+// GeoBorder reference (Config.BorderMode).  The source ring orientation is
+// kept.
 //
 // The report accounts for every source leaf: each attribute and each
 // element text of every top-level element (and of the root) gets exactly
@@ -60,7 +70,7 @@ import (
 // bumped on every rule change.
 const (
 	Name    = "goaixm/aixm45to51"
-	Version = "0.1.0"
+	Version = "0.2.0"
 )
 
 // Config configures a Converter.
@@ -79,6 +89,18 @@ type Config struct {
 	// text in a note.  goaixm ships no such table: the texts are the
 	// producer's own.
 	ObstacleType func(descr string) string
+	// BorderMode says how boundaries that follow a border (Avx codeType
+	// FNT) are written: Inline (default) or Reference.  GeoBorder features
+	// are emitted in both modes.
+	BorderMode BorderMode
+	// RhumbTolerance, in metres, is the largest deviation allowed between
+	// a rhumb line (codeType RHL) and the geodesic string that replaces it
+	// (GML has no rhumb-line interpolation); default 1.
+	RhumbTolerance float64
+	// BorderTolerance, in metres, is the distance from a border beyond
+	// which a vertex of a border-following boundary is reported
+	// (border_far); default 100.
+	BorderTolerance float64
 }
 
 // Errors of Convert.
@@ -117,9 +139,11 @@ func (c *Converter) Convert(ctx context.Context, src convert.Source, dst convert
 		return nil, ErrNoNamespace
 	}
 	r := &run{cfg: c.cfg, ctx: ctx, rep: convert.NewReport(), dst: dst}
+	r.airspaceIndex.init(c.cfg)
 	if err := r.pass1(src); err != nil {
 		return nil, err
 	}
+	r.resolveAirspaces()
 	if err := dst.Begin(convert.Header{Version: version.AIXM511, Root: "AIXMBasicMessage", GMLID: "msg-" + r.sha[:32], Attrs: r.h.Attrs}); err != nil {
 		return nil, err
 	}
@@ -150,6 +174,8 @@ type run struct {
 	colloc map[string][]member
 	// grouped holds the own keys of Dme and Tcn that join a Vor's Navaid.
 	grouped map[string]bool
+	// airspaceIndex holds the indexed boundaries, derivations and borders.
+	airspaceIndex
 }
 
 type member struct {
@@ -163,8 +189,10 @@ var (
 		"Org": (*elem).org, "Uni": (*elem).uni, "Dpn": (*elem).dpn,
 		"Vor": (*elem).vor, "Dme": (*elem).dme, "Ndb": (*elem).ndb, "Tcn": (*elem).tcn,
 		"Obs": (*elem).obs, "Ahp": (*elem).ahp, "Rwy": (*elem).rwy, "Rdn": (*elem).rdn,
+		"Ase": (*elem).ase, "Abd": (*elem).abd, "Adg": (*elem).adg, "Gbr": (*elem).gbr,
 	}
-	phase1b = map[string]bool{"Ase": true, "Abd": true, "Adg": true, "Avx": true, "Gbr": true, "Gbv": true, "Att": true, "Ain": true}
+	// mergedKinds are converted into the records of other kinds.
+	mergedKinds = map[string]bool{"Abd": true, "Adg": true}
 )
 
 func open(src convert.Source, h io.Writer) (io.ReadCloser, io.Reader, error) {
@@ -213,6 +241,7 @@ func (r *run) pass1(src convert.Source) error {
 			return nil
 		}
 		r.keys[base]++
+		r.index1(e, kind, base, key)
 		if kind == "Dme" || kind == "Tcn" {
 			if vor := e.Node.Child("VorUid"); vor != nil {
 				mid, _ := e.Node.Child(kind + "Uid").Attr("mid")
@@ -251,7 +280,7 @@ func (r *run) pass1(src convert.Source) error {
 	// Duplicate keys of the kinds converted (D7).
 	var dups []string
 	for k, n := range r.keys {
-		if n > 1 && mappedKinds[k[:strings.IndexByte(k, '(')]] != nil {
+		if kind := k[:strings.IndexByte(k, '(')]; n > 1 && mappedKinds[kind] != nil && !mergedKinds[kind] {
 			dups = append(dups, k)
 		}
 	}
@@ -320,14 +349,11 @@ func (r *run) header() {
 func (r *run) element(e aixm45.Element) error {
 	kind := e.Kind()
 	conv := mappedKinds[kind]
-	el := &elem{r: r, kind: kind, n: e.Node, index: e.Index, ks: r.rep.Kind(kind), marks: map[leafID]mark{}}
+	el := &elem{r: r, kind: kind, n: e.Node, index: e.Index, ks: r.rep.Kind(kind), marks: map[leafID]mark{}, qual: map[*xmlnode.Node]string{}}
 	el.ks.In++
 	switch {
 	case conv == nil:
 		el.fallback = "LATER"
-		if phase1b[kind] {
-			el.fallback = "PH1B"
-		}
 		el.ks.Dropped++
 		if el.ks.In == 1 {
 			r.rep.AddIssue(convert.Issue{Code: "kind_unmapped", Severity: convert.Info, Kind: kind, Message: rule(el.fallback).Note})

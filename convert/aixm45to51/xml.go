@@ -158,22 +158,32 @@ var (
 	orderUnit = []string{"name", "type", "compliantICAO", "designator", "military", "position", "airportLocation", "ownerOrganisation", "contact", "relatedUnit", "availability", "annotation"}
 	orderDpn  = []string{"designator", "type", "name", "location", "aimingPoint", "airportHeliport", "runwayPoint", "annotation"}
 	// NavaidEquipmentPropertyGroup followed by the equipment's own group.
-	orderEquipment = []string{"designator", "name", "emissionClass", "mobile", "magneticVariation", "magneticVariationAccuracy", "dateMagneticVariation", "flightChecked", "location", "authority", "monitoring", "availability", "annotation"}
-	orderVOR       = append(append([]string(nil), orderEquipment...), "type", "frequency", "zeroBearingDirection", "declination")
-	orderDME       = append(append([]string(nil), orderEquipment...), "type", "channel", "ghostFrequency", "displace")
-	orderNDB       = append(append([]string(nil), orderEquipment...), "frequency", "class", "emissionBand")
-	orderTACAN     = append(append([]string(nil), orderEquipment...), "channel", "declination")
-	orderNavaid    = []string{"type", "designator", "name", "flightChecked", "purpose", "signalPerformance", "courseQuality", "integrityLevel", "touchDownLiftOff", "navaidEquipment", "location", "runwayDirection", "servedAirport", "availability", "annotation"}
-	orderVS        = []string{"name", "type", "lighted", "markingICAOStandard", "group", "length", "width", "radius", "lightingICAOStandard", "synchronisedLighting", "marker", "part", "hostedPassengerService", "supportedGroundLight", "hostedNavaidEquipment", "hostedSpecialNavStation", "hostedUnit", "hostedOrganisation", "supportedService", "annotation", "lightingAvailability"}
-	orderVSPart    = []string{"verticalExtent", "verticalExtentAccuracy", "type", "constructionStatus", "markingPattern", "markingFirstColour", "markingSecondColour", "mobile", "frangible", "visibleMaterial", "designator", "horizontalProjection_surfaceExtent", "horizontalProjection_linearExtent", "horizontalProjection_location", "lighting"}
-	orderAhp       = []string{"designator", "name", "locationIndicatorICAO", "designatorIATA", "type", "certifiedICAO", "privateUse", "controlType", "fieldElevation", "fieldElevationAccuracy", "verticalDatum", "magneticVariation", "magneticVariationAccuracy", "dateMagneticVariation", "magneticVariationChange", "referenceTemperature", "altimeterCheckLocation", "secondaryPowerSupply", "windDirectionIndicator", "landingDirectionIndicator", "transitionAltitude", "transitionLevel", "lowestTemperature", "abandoned", "certificationDate", "certificationExpirationDate", "contaminant", "servedCity", "responsibleOrganisation", "ARP", "aviationBoundary", "altimeterSource", "contact", "availability", "annotation"}
-	orderCity      = []string{"name", "annotation"}
-	orderAhpResp   = []string{"role", "theOrganisationAuthority"}
-	orderAuthority = []string{"type", "annotation", "theOrganisationAuthority"}
-	orderComponent = []string{"collocationGroup", "markerPosition", "providesNavigableLocation", "annotation", "theNavaidEquipment"}
-	orderRunway    = []string{"designator", "type", "nominalLength", "lengthAccuracy", "nominalWidth", "widthAccuracy", "widthShoulder", "lengthStrip", "widthStrip", "lengthOffset", "widthOffset", "abandoned", "surfaceProperties", "associatedAirportHeliport", "overallContaminant", "annotation", "areaContaminant"}
-	orderSurface   = []string{"composition", "preparation", "surfaceCondition", "classPCN", "pavementTypePCN", "pavementSubgradePCN", "maxTyrePressurePCN", "evaluationMethodPCN", "classLCN", "weightSIWL", "tyrePressureSIWL", "weightAUW", "annotation"}
-	orderRdn       = []string{"designator", "trueBearing", "trueBearingAccuracy", "magneticBearing", "patternVFR", "slopeTDZ", "elevationTDZ", "elevationTDZAccuracy", "approachMarkingType", "approachMarkingCondition", "classLightingJAR", "precisionApproachGuidance", "usedRunway", "startingElement", "annotation", "availability"}
+	orderEquipment  = []string{"designator", "name", "emissionClass", "mobile", "magneticVariation", "magneticVariationAccuracy", "dateMagneticVariation", "flightChecked", "location", "authority", "monitoring", "availability", "annotation"}
+	orderVOR        = append(append([]string(nil), orderEquipment...), "type", "frequency", "zeroBearingDirection", "declination")
+	orderDME        = append(append([]string(nil), orderEquipment...), "type", "channel", "ghostFrequency", "displace")
+	orderNDB        = append(append([]string(nil), orderEquipment...), "frequency", "class", "emissionBand")
+	orderTACAN      = append(append([]string(nil), orderEquipment...), "channel", "declination")
+	orderNavaid     = []string{"type", "designator", "name", "flightChecked", "purpose", "signalPerformance", "courseQuality", "integrityLevel", "touchDownLiftOff", "navaidEquipment", "location", "runwayDirection", "servedAirport", "availability", "annotation"}
+	orderVS         = []string{"name", "type", "lighted", "markingICAOStandard", "group", "length", "width", "radius", "lightingICAOStandard", "synchronisedLighting", "marker", "part", "hostedPassengerService", "supportedGroundLight", "hostedNavaidEquipment", "hostedSpecialNavStation", "hostedUnit", "hostedOrganisation", "supportedService", "annotation", "lightingAvailability"}
+	orderVSPart     = []string{"verticalExtent", "verticalExtentAccuracy", "type", "constructionStatus", "markingPattern", "markingFirstColour", "markingSecondColour", "mobile", "frangible", "visibleMaterial", "designator", "horizontalProjection_surfaceExtent", "horizontalProjection_linearExtent", "horizontalProjection_location", "lighting"}
+	orderAhp        = []string{"designator", "name", "locationIndicatorICAO", "designatorIATA", "type", "certifiedICAO", "privateUse", "controlType", "fieldElevation", "fieldElevationAccuracy", "verticalDatum", "magneticVariation", "magneticVariationAccuracy", "dateMagneticVariation", "magneticVariationChange", "referenceTemperature", "altimeterCheckLocation", "secondaryPowerSupply", "windDirectionIndicator", "landingDirectionIndicator", "transitionAltitude", "transitionLevel", "lowestTemperature", "abandoned", "certificationDate", "certificationExpirationDate", "contaminant", "servedCity", "responsibleOrganisation", "ARP", "aviationBoundary", "altimeterSource", "contact", "availability", "annotation"}
+	orderCity       = []string{"name", "annotation"}
+	orderAhpResp    = []string{"role", "theOrganisationAuthority"}
+	orderAuthority  = []string{"type", "annotation", "theOrganisationAuthority"}
+	orderComponent  = []string{"collocationGroup", "markerPosition", "providesNavigableLocation", "annotation", "theNavaidEquipment"}
+	orderRunway     = []string{"designator", "type", "nominalLength", "lengthAccuracy", "nominalWidth", "widthAccuracy", "widthShoulder", "lengthStrip", "widthStrip", "lengthOffset", "widthOffset", "abandoned", "surfaceProperties", "associatedAirportHeliport", "overallContaminant", "annotation", "areaContaminant"}
+	orderSurface    = []string{"composition", "preparation", "surfaceCondition", "classPCN", "pavementTypePCN", "pavementSubgradePCN", "maxTyrePressurePCN", "evaluationMethodPCN", "classLCN", "weightSIWL", "tyrePressureSIWL", "weightAUW", "annotation"}
+	orderRdn        = []string{"designator", "trueBearing", "trueBearingAccuracy", "magneticBearing", "patternVFR", "slopeTDZ", "elevationTDZ", "elevationTDZAccuracy", "approachMarkingType", "approachMarkingCondition", "classLightingJAR", "precisionApproachGuidance", "usedRunway", "startingElement", "annotation", "availability"}
+	orderAirspace   = []string{"type", "designator", "localType", "name", "designatorICAO", "controlType", "upperLowerSeparation", "class", "protectedRoute", "geometryComponent", "activation", "annotation"}
+	orderGeomComp   = []string{"operation", "operationSequence", "annotation", "theAirspaceVolume"}
+	orderVolume     = []string{"upperLimit", "upperLimitReference", "maximumLimit", "maximumLimitReference", "lowerLimit", "lowerLimitReference", "minimumLimit", "minimumLimitReference", "width", "horizontalProjection", "centreline", "contributorAirspace", "annotation"}
+	orderDependency = []string{"dependency", "annotation", "theAirspace"}
+	orderLayerClass = []string{"classification", "associatedLevels"}
+	// PropertiesWithSchedulePropertyGroup followed by the activation's own
+	// group.
+	orderActivation = []string{"timeInterval", "annotation", "specialDateAuthority", "activity", "status", "levels", "user", "aircraft"}
+	orderTimesheet  = []string{"timeReference", "startDate", "endDate", "day", "dayTil", "startTime", "startEvent", "startTimeRelativeEvent", "startEventInterpretation", "endTime", "endEvent", "endTimeRelativeEvent", "endEventInterpretation", "daylightSavingAdjust", "excluded", "annotation"}
+	orderGeoBorder  = []string{"name", "type", "border", "annotation"}
 	// gml:pos first, then Point and ElevatedPoint properties.
 	orderPoint = []string{"pos", "horizontalAccuracy", "annotation", "elevation", "geoidUndulation", "verticalDatum", "verticalAccuracy"}
 )

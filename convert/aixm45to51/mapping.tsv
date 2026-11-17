@@ -28,7 +28,6 @@ GEN-TT	*/Aht, Vtt, Dtt, Ntt, Ttt (timesheets)	-	unmapped	goaixm	phase 2 (availab
 GEN-VALUE	value not valid in its 5.1.1 type	*/annotation/Note[propertyName=<target>, purpose=REMARK]	lossy	goaixm	value kept as a note, property omitted
 GEN-CODE	code not in the 5.1.1 list	OTHER + */annotation/Note[propertyName=<target>]	lossy	goaixm	only for lists with OTHER; otherwise invalid
 UNMAPPED	other leaves of a mapped kind	-	unmapped	goaixm	not (yet) mapped
-PH1B	Ase, Abd, Adg, Gbr, Att, … (airspace, borders)	-	unmapped	goaixm	phase 1b
 LATER	every other kind	-	unmapped	goaixm	phase 2 or later
 # Geometry (positions): every *-POS rule writes decimal degrees, lat long,
 # exact to the source precision (aixm45.Coord.Decimals), with srsName
@@ -133,3 +132,58 @@ RDN-TRUEBRG	Rdn/valTrueBrg	RunwayDirection/trueBearing	mapped	goaixm
 RDN-MAGBRG	Rdn/valMagBrg	RunwayDirection/magneticBearing	mapped	goaixm
 RDN-TDZ	Rdn/valElevTdz + uomElevTdz	RunwayDirection/elevationTDZ	mapped	goaixm
 RDN-POS	Rdn/geoLat, geoLong, codeDatum	-	unmapped	goaixm	open question: threshold position, RunwayCentrelinePoint (phase 2)
+# Ase (Airspace); limits in the BASE volume(s)
+ASE-TYPE	Ase/AseUid/codeType	Airspace/type	mapped	goaixm	codes airspace_type
+ASE-DESIG	Ase/AseUid/codeId	Airspace/designator	mapped	goaixm
+ASE-LOCALTYPE	Ase/txtLocalType	Airspace/localType	mapped	goaixm
+ASE-NAME	Ase/txtName	Airspace/name	mapped	goaixm
+ASE-CLASS	Ase/codeClass	Airspace/class/AirspaceLayerClass/classification	mapped	goaixm	codes airspace_class; no associatedLevels (whole airspace)
+ASE-LOCIND	Ase/codeLocInd	-	unmapped	goaixm	open question: no evident 5.1.1 property (designatorICAO is a yes/no flag)
+ASE-UPPER	Ase/valDistVerUpper + uomDistVerUpper	…/AirspaceVolume/upperLimit	mapped	goaixm	value verbatim (e.g. 065 FL); 0 is not turned into GND
+ASE-UPPERREF	Ase/codeDistVerUpper	…/AirspaceVolume/upperLimitReference	mapped	goaixm	codes vertical_ref (HEI SFC, ALT MSL, STD STD, W84 W84)
+ASE-MAX	Ase/valDistVerMax + uomDistVerMax	…/AirspaceVolume/maximumLimit	mapped	goaixm
+ASE-MAXREF	Ase/codeDistVerMax	…/AirspaceVolume/maximumLimitReference	mapped	goaixm	codes vertical_ref
+ASE-LOWER	Ase/valDistVerLower + uomDistVerLower	…/AirspaceVolume/lowerLimit	mapped	goaixm
+ASE-LOWERREF	Ase/codeDistVerLower	…/AirspaceVolume/lowerLimitReference	mapped	goaixm	codes vertical_ref
+ASE-MIN	Ase/valDistVerMnm + uomDistVerMnm	…/AirspaceVolume/minimumLimit	mapped	goaixm
+ASE-MINREF	Ase/codeDistVerMnm	…/AirspaceVolume/minimumLimitReference	mapped	goaixm	codes vertical_ref
+ASE-ACTIVITY	Ase/codeActivity	Airspace/activation/AirspaceActivation/activity	mapped	goaixm	codes activity; in the first activation (one of its own without Att)
+ASE-GEOM	(Abd, Adg)	Airspace/geometryComponent/AirspaceGeometryComponent	derived	goaixm	Abd: one component, operation BASE, operationSequence 1, the limits and horizontalProjection; Adg: one component per operand (see ADG-*); neither: limits only, geometry_missing; Abd and Adg: the Abd is used (geometry_both)
+# Att (working hours)
+ATT-WORKHR	Ase/Att/codeWorkHr	Airspace/activation/AirspaceActivation (timeInterval/Timesheet, status)	derived	goaixm	H24: UTC ANY 00:00-24:00; HJ: ANY SR-SS; HN: ANY SS-SR; TIMSH: the Timsh rows; status ACTIVE; other values (HX, HO, NOTAM, OTHER): no timesheet, value kept as a note (lossy)
+ATT-RMK	Ase/Att/txtRmkWorkHr	…/AirspaceActivation/annotation/Note[purpose=REMARK]	mapped	goaixm
+TSH-REF	Ase/Att/Timsh/codeTimeRef	…/Timesheet/timeReference	mapped	goaixm	codes time_ref; UTCW also gives daylightSavingAdjust YES (open question)
+TSH-DATE	Ase/Att/Timsh/dateValidWef, dateValidTil	…/Timesheet/startDate, endDate	mapped	goaixm	DD-MM, SDLST, EDLST verbatim
+TSH-DAY	Ase/Att/Timsh/codeDay, codeDayTil	…/Timesheet/day, dayTil	mapped	goaixm	codes day
+TSH-TIME	Ase/Att/Timsh/timeWef, timeTil	…/Timesheet/startTime, endTime	mapped	goaixm
+TSH-EVENT	Ase/Att/Timsh/codeEventWef, codeEventTil	…/Timesheet/startEvent, endEvent	mapped	goaixm	codes time_event
+TSH-REL	Ase/Att/Timsh/timeRelEventWef, timeRelEventTil	…/Timesheet/startTimeRelativeEvent, endTimeRelativeEvent (uom MIN)	mapped	goaixm	minutes
+TSH-COMB	Ase/Att/Timsh/codeCombWef, codeCombTil	…/Timesheet/startEventInterpretation, endEventInterpretation	mapped	goaixm	codes time_comb
+# Abd (boundary), merged into the Airspace
+ABD-ASE	Abd/AbdUid/AseUid	Airspace (the boundary's airspace)	derived	goaixm	a duplicate airspace key is resolved by the reference's mid
+ABD-ORPHAN	Abd of an airspace not in the document	-	unmapped	goaixm	dropped, dangling_ref
+ABD-DUP	further Abd of one airspace	-	unmapped	goaixm	dropped, boundary_duplicate
+ABD-UNUSED	Abd/Avx beside an Abd/Circle	-	unmapped	goaixm	geometry_invalid
+AVX-POS	Abd/Avx/geoLat, geoLong	…/horizontalProjection/Surface/…/Ring positions	mapped	goaixm	positions as in "Geometry"; segment i runs from vertex i to vertex i+1, the last to the first (a last vertex equal to the first adds nothing); a ring enclosing no area (fewer than three distinct positions, no arc) gives no projection and a note with the positions (lossy, geometry_degenerate)
+AVX-GRC	Abd/Avx[codeType=GRC]/codeType	gml:GeodesicString	mapped	goaixm	consecutive straight pieces share one geodesic string
+AVX-RHL	Abd/Avx[codeType=RHL]/codeType	gml:GeodesicString with positions on the rhumb line	lossy	goaixm	GML 3.2 has no rhumb-line interpolation: positions on the loxodrome (WGS-84, geo.RhumbLine) until every geodesic piece deviates at most Config.RhumbTolerance (1 m)
+AVX-ARC	Abd/Avx[codeType=CWA|CCA]/codeType, geoLatArc, geoLongArc, valRadiusArc, uomRadiusArc	gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)	derived	goaixm	start/end = geodesic bearing centre to vertex i / i+1 (6 decimals); signed sweep in goaixm's convention: CWA end = start + clockwise sweep, CCA end = start - counter-clockwise sweep, sweep in (0, 360); a vertex within that tolerance of the arc end computed from centre, radius and angle (same bearing) is written as that end, so the ring is continuous and does not cross itself (lossy, the distance in the note; vertices farther away are kept); zero sweep: arc omitted (arc_degenerate); end distance off the radius by more than max(20 m, 0.5 %) gives arc_radius_mismatch (radius kept); centre or radius unusable: great circle (arc_invalid)
+AVX-FNT	Abd/Avx[codeType=FNT]/codeType, GbrUid	border stretch from vertex i to vertex i+1 (geo.BorderStretch)	derived	goaixm	Config.BorderMode Inline: border positions in the ring's geodesic string; Reference: gml:curveMember xlink:href to the GeoBorder (closed borders inline); closed border: the shorter way round (border_ambiguous); vertex farther than Config.BorderTolerance (100 m) from the border: border_far; border not in the document: great circle (border_missing)
+AVX-RMK	Abd/txtRmk, Abd/Avx/txtRmk, Abd/Circle/txtRmk	…/AirspaceVolume/annotation/Note[propertyName=horizontalProjection, purpose=REMARK]	mapped	goaixm	"Boundary vertex n: …"
+AVX-CENREF	Abd/Avx/…UidCen, Abd/Circle/…UidCen	-	unmapped	goaixm	the navaid giving the arc centre; the centre coordinates are used
+AVX-SPN	Abd/Avx/…UidSpn	-	unmapped	goaixm	open question: spanning navaid or point of a vertex
+CIR	Abd/Circle/geoLatCen, geoLongCen, valRadius, uomRadius	gml:CircleByCenterPoint (pos, radius)	mapped	goaixm	radius unit through uom_dist
+# Adg (derived geometry), merged into the Airspace
+ADG-ASE	Adg/AdgUid/AseUid	Airspace (the derived airspace)	derived	goaixm
+ADG-SAME	Adg/AseUidSameExtent	Airspace/geometryComponent (BASE)/…/contributorAirspace/AirspaceVolumeDependency/theAirspace	derived	goaixm	dependency HORZ_PROJECTION when the airspace has limits of its own (written on the volume), else FULL_GEOMETRY
+ADG-BASE	Adg/AseUidBase	Airspace/geometryComponent[operation=BASE, operationSequence=1]/…/contributorAirspace	derived	goaixm	dependency as ADG-SAME; without AseUidBase the first component is the base
+ADG-COMP	Adg/AseUidComponent	Airspace/geometryComponent[operation=codeOpr, operationSequence=n]/…/contributorAirspace	derived	goaixm	one component per AseUidComponent, in document order; dependency as ADG-SAME
+ADG-OPR	Adg/codeOpr	…/AirspaceGeometryComponent/operation	mapped	goaixm	codes aggregation; the codeOpr preceding each AseUidComponent
+ADG-ORPHAN	Adg of an airspace not in the document	-	unmapped	goaixm	dropped, dangling_ref
+ADG-SHADOW	Adg of an airspace with an Abd, or a further Adg	-	unmapped	goaixm	dropped (geometry_both, derivation_duplicate)
+# Gbr (GeoBorder)
+GBR-NAME	Gbr/GbrUid/txtName	GeoBorder/name	mapped	goaixm
+GBR-TYPE	Gbr/codeType	GeoBorder/type	mapped	goaixm	codes border_type
+GBV-POS	Gbr/Gbv/geoLat, geoLong	GeoBorder/border/Curve/GeodesicString positions	mapped	goaixm	positions as in "Geometry"
+GBV-TYPE	Gbr/Gbv[codeType=GRC|END]/codeType	GeoBorder/border/Curve/GeodesicString	mapped	goaixm	END marks the last vertex
+GBV-RHL	Gbr/Gbv[codeType=RHL]/codeType	geodesic string with positions on the rhumb line	lossy	goaixm	as AVX-RHL

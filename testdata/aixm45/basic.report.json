@@ -2,8 +2,8 @@
   "format": 1,
   "converter": {
     "name": "goaixm/aixm45to51",
-    "version": "0.1.0",
-    "mappingDigest": "3e2bd0cef7c89ac19977f2241827d03799e72cf39b641b3829af468a2927f606",
+    "version": "0.2.0",
+    "mappingDigest": "f05e97b957bb6b923092c749fda53f9e97de4b48e84ed7272ce97d50c99ea6c5",
     "module": ""
   },
   "from": "4.5",
@@ -23,9 +23,9 @@
     }
   },
   "output": {
-    "records": 25,
-    "bytes": 47321,
-    "sha256": "56490cb94fd92b9d451a4af2ba370defdb377ad055873a18cefb0ffca20c9e3a"
+    "records": 27,
+    "bytes": 51039,
+    "sha256": "49e37a613330f870db7a78ac9cca2a8ceea302d8fe38be1c923d00ebc2ca794b"
   },
   "kinds": {
     "AIXM-Snapshot": {
@@ -85,126 +85,78 @@
     "Abd": {
       "in": 1,
       "out": 0,
-      "merged": 0,
-      "dropped": 1,
+      "merged": 1,
+      "dropped": 0,
       "leaves": 9,
       "elements": {
         "Abd/AbdUid/@mid": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "1001"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Abd/AbdUid/AseUid/@mid": {
           "target": "-",
-          "rule": "PH1B",
+          "rule": "REF-MID",
           "outcomes": {
             "unmapped": 1
           },
           "samples": [
             {
-              "key": "[22]",
+              "key": "Abd(AseUid(codeId=XA01CTR;codeType=CTR))",
               "value": "1000"
             }
           ]
         },
         "Abd/AbdUid/AseUid/codeId": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "XA01CTR"
-            }
-          ]
+            "derived": 1
+          }
         },
         "Abd/AbdUid/AseUid/codeType": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "CTR"
-            }
-          ]
+            "derived": 1
+          }
         },
         "Abd/Circle/codeDatum": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "WGE"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Abd/Circle/geoLatCen": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "101500.00N"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Abd/Circle/geoLongCen": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "0201500.00E"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Abd/Circle/uomRadius": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "NM"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Abd/Circle/valRadius": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[22]",
-              "value": "5"
-            }
-          ]
+            "mapped": 1
+          }
         }
       }
     },
@@ -440,101 +392,67 @@
     },
     "Ase": {
       "in": 1,
-      "out": 0,
+      "out": 1,
       "merged": 0,
-      "dropped": 1,
+      "dropped": 0,
       "leaves": 7,
+      "defaults": 1,
       "elements": {
-        "Ase/AseUid/@mid": {
-          "target": "-",
-          "rule": "PH1B",
+        "Ase/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "1000"
-            }
-          ]
+            "defaulted": 1
+          }
+        },
+        "Ase/AseUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 1
+          }
         },
         "Ase/AseUid/codeId": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "Airspace/designator",
+          "rule": "ASE-DESIG",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "XA01CTR"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Ase/AseUid/codeType": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "Airspace/type",
+          "rule": "ASE-TYPE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "CTR"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Ase/codeDistVerUpper": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "…/AirspaceVolume/upperLimitReference",
+          "rule": "ASE-UPPERREF",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "ALT"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Ase/txtName": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "Airspace/name",
+          "rule": "ASE-NAME",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "EXAMPLE CTR"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Ase/uomDistVerUpper": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "FT"
-            }
-          ]
+            "mapped": 1
+          }
         },
         "Ase/valDistVerUpper": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[21]",
-              "value": "2500"
-            }
-          ]
+            "mapped": 1
+          }
         }
       }
     },
@@ -844,117 +762,95 @@
     },
     "Gbr": {
       "in": 1,
-      "out": 0,
+      "out": 1,
       "merged": 0,
-      "dropped": 1,
+      "dropped": 0,
       "leaves": 11,
+      "defaults": 1,
       "elements": {
-        "Gbr/GbrUid/@mid": {
-          "target": "-",
-          "rule": "PH1B",
+        "Gbr/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "900"
-            }
-          ]
+            "defaulted": 1
+          }
+        },
+        "Gbr/GbrUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 1
+          }
         },
         "Gbr/GbrUid/txtName": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "GeoBorder/name",
+          "rule": "GBR-NAME",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "EXAMPLE BORDER"
-            }
-          ]
+            "mapped": 1
+          }
         },
-        "Gbr/Gbv/codeDatum": {
-          "target": "-",
-          "rule": "PH1B",
+        "Gbr/Gbv[codeType=END]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
           "outcomes": {
-            "unmapped": 2
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "WGE"
-            },
-            {
-              "key": "[20]",
-              "value": "WGE"
-            }
-          ]
+            "mapped": 1
+          }
         },
-        "Gbr/Gbv/codeType": {
-          "target": "-",
-          "rule": "PH1B",
+        "Gbr/Gbv[codeType=END]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
           "outcomes": {
-            "unmapped": 2
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "GRC"
-            },
-            {
-              "key": "[20]",
-              "value": "END"
-            }
-          ]
+            "mapped": 1
+          }
         },
-        "Gbr/Gbv/geoLat": {
-          "target": "-",
-          "rule": "PH1B",
+        "Gbr/Gbv[codeType=END]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
           "outcomes": {
-            "unmapped": 2
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "100000N"
-            },
-            {
-              "key": "[20]",
-              "value": "120000N"
-            }
-          ]
+            "mapped": 1
+          }
         },
-        "Gbr/Gbv/geoLong": {
-          "target": "-",
-          "rule": "PH1B",
+        "Gbr/Gbv[codeType=END]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
           "outcomes": {
-            "unmapped": 2
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "0200000E"
-            },
-            {
-              "key": "[20]",
-              "value": "0200000E"
-            }
-          ]
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
         },
         "Gbr/codeType": {
-          "target": "-",
-          "rule": "PH1B",
+          "target": "GeoBorder/type",
+          "rule": "GBR-TYPE",
           "outcomes": {
-            "unmapped": 1
-          },
-          "samples": [
-            {
-              "key": "[20]",
-              "value": "ST"
-            }
-          ]
+            "mapped": 1
+          }
         }
       }
     },
@@ -2148,8 +2044,10 @@
   },
   "targets": {
     "AirportHeliport": 1,
+    "Airspace": 1,
     "DME": 2,
     "DesignatedPoint": 3,
+    "GeoBorder": 1,
     "NDB": 1,
     "Navaid": 5,
     "OrganisationAuthority": 1,
@@ -2220,27 +2118,6 @@
       "kind": "Obs",
       "key": "Obs(geoLat=10.2084722222;geoLong=20.2084722222)",
       "message": "natural key occurs more than once: later occurrences get #2, #3, … (identity depends on document order)",
-      "count": 1
-    },
-    {
-      "code": "kind_unmapped",
-      "severity": "info",
-      "kind": "Abd",
-      "message": "phase 1b",
-      "count": 1
-    },
-    {
-      "code": "kind_unmapped",
-      "severity": "info",
-      "kind": "Ase",
-      "message": "phase 1b",
-      "count": 1
-    },
-    {
-      "code": "kind_unmapped",
-      "severity": "info",
-      "kind": "Gbr",
-      "message": "phase 1b",
       "count": 1
     },
     {
