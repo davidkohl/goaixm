@@ -167,6 +167,11 @@ comps, err := opt.AirspaceComponents(airspace, msg)
 | `PreferSourceVertices` | joins of a computed arc end with an explicit vertex | The explicit source position is kept |
 | `BorderSnapTolerance` | rings borrowing a referenced `GeoBorder` | An explicit end vertex of the neighbouring curve that lies beyond the border (its own last or first piece crosses it) and within the tolerance is moved onto the border at the cut point; each move is reported to `OnRepair` as a `geo.Repair` |
 
+`geo.Options{NestedContributors: true}` gives a contributor airspace that is
+itself an aggregate as its own components (`AirspaceComponent.Contributor`,
+with their operations, recursively), so that callers combine each level;
+without it, its polygons are packed together unmerged.
+
 `geo.DensifyVersion` changes whenever the same options give different
 positions, for callers that store converted geometry.
 

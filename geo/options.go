@@ -74,6 +74,13 @@ type Options struct {
 	// from the explicit position to the next border vertex.
 	BorderCutPoints bool
 
+	// NestedContributors makes AirspaceComponents give a contributor
+	// airspace that is itself an aggregate as its own components
+	// (AirspaceComponent.Contributor, recursively) instead of the
+	// unmerged polygons of all its components (which overlap or share
+	// edges, and lose INTERS/SUBTR).
+	NestedContributors bool
+
 	// LegacySnapAfterDensify reproduces the snap of DensifyVersion 1 (only
 	// the end position moved, after densification; the densified positions
 	// of the end piece still lead to the source vertex), so that geometry

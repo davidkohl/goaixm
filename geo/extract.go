@@ -106,6 +106,13 @@ type AirspaceComponent struct {
 	// Geometry is Polygon, MultiPolygon, LineString (corridor centreline)
 	// or nil.
 	Geometry any
+	// Contributor, with Options.NestedContributors, holds the components
+	// of the contributor airspace the volume takes its geometry from, when
+	// that airspace is itself an aggregate (several components or another
+	// contributor): the caller combines them, with their own operations,
+	// before applying Operation.  Geometry is nil then.  A contributor of a
+	// single plain component is given as Geometry directly.
+	Contributor []AirspaceComponent
 	// Warnings describe problems that make Geometry deviate from the source,
 	// e.g. ring members that do not connect.  The geometry is still usable.
 	Warnings []string
@@ -127,10 +134,14 @@ func AirspaceComponents(a *aixm.Airspace, msg *goaixm.Message) ([]AirspaceCompon
 }
 
 func airspaceComponents(a *aixm.Airspace, o Options, msg *goaixm.Message) ([]AirspaceComponent, error) {
+	return componentsDepth(a, o.conv(msg), msg, 0)
+}
+
+// componentsDepth converts the components of a (at aggregation depth).
+func componentsDepth(a *aixm.Airspace, cv *conv, msg *goaixm.Message, depth int) ([]AirspaceComponent, error) {
 	if a == nil || len(a.TimeSlice) == 0 {
 		return nil, fmt.Errorf("geo: airspace has no time slices")
 	}
-	cv := o.conv(msg)
 	var out []AirspaceComponent
 	for _, gc := range orderedComponents(a.TimeSlice[0].GeometryComponent) {
 		c := AirspaceComponent{
@@ -140,7 +151,26 @@ func airspaceComponents(a *aixm.Airspace, o Options, msg *goaixm.Message) ([]Air
 		}
 		if c.Volume != nil {
 			cv.ringBase = ringBase(a.TimeSlice[0].GeometryComponent, c.Volume)
-			g, err := volumeGeometry(c.Volume, cv, msg, 0, func(w string) { c.Warnings = append(c.Warnings, w) })
+			if sub := nestedContributor(c.Volume, cv, msg); sub != nil {
+				if depth+1 >= maxContributorDepth {
+					return nil, fmt.Errorf("geojson: contributor airspace nesting exceeds %d levels", maxContributorDepth)
+				}
+				base := cv.ringBase
+				comps, err := componentsDepth(sub, cv, msg, depth+1)
+				cv.ringBase = base
+				if err != nil {
+					return nil, err
+				}
+				if _, line := comps[0].Geometry.(LineString); len(comps) == 1 && comps[0].Contributor == nil && !line {
+					// A plain airspace: its geometry is the contribution.
+					c.Geometry, c.Warnings, c.Unresolved = comps[0].Geometry, comps[0].Warnings, comps[0].Unresolved
+				} else {
+					c.Contributor = comps
+				}
+				out = append(out, c)
+				continue
+			}
+			g, err := volumeGeometry(c.Volume, cv, msg, depth, func(w string) { c.Warnings = append(c.Warnings, w) })
 			if err != nil {
 				return nil, err
 			}
@@ -152,6 +182,31 @@ func airspaceComponents(a *aixm.Airspace, o Options, msg *goaixm.Message) ([]Air
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// nestedContributor returns, with Options.NestedContributors, the airspace
+// whose horizontal geometry vol takes (a volume without geometry of its own
+// whose contributorAirspace resolves), else nil.
+func nestedContributor(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message) *aixm.Airspace {
+	if !cv.opt.NestedContributors || msg == nil || vol.HorizontalProjection.Patches() != nil || vol.Centreline.Segments() != nil {
+		return nil
+	}
+	dep := vol.ContributorAirspace
+	if dep == nil || dep.TheAirspace == nil || dep.TheAirspace.Href == "" {
+		return nil
+	}
+	if d := codeValue(dep.Dependency); d != "" && d != aixm.DependencyFullGeometry && d != aixm.DependencyHorzProjection {
+		return nil
+	}
+	resolved, ok := msg.Resolve(dep.TheAirspace.Href)
+	if !ok {
+		return nil
+	}
+	sub, _ := resolved.(*aixm.Airspace)
+	if sub == nil || len(sub.TimeSlice) == 0 {
+		return nil
+	}
+	return sub
 }
 
 // unresolvedContributor returns the contributor airspace reference of vol
