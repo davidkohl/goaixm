@@ -37,23 +37,23 @@ func DestinationPoint(lat, lon, bearingDeg, distMetres float64) (destLat, destLo
 	lambda1 := rad(lon)
 	alpha1 := rad(bearingDeg)
 
-	sinAlpha1, cosAlpha1 := math.Sincos(alpha1)
+	sinAlpha1, cosAlpha1 := dsincos(alpha1)
 
-	tanU1 := (1 - wgs84F) * math.Tan(phi1)
-	cosU1 := 1 / math.Sqrt(1+tanU1*tanU1)
-	sinU1 := tanU1 * cosU1
+	tanU1 := float64((1 - wgs84F) * dtan(phi1))
+	cosU1 := 1 / math.Sqrt(1+float64(tanU1*tanU1))
+	sinU1 := float64(tanU1 * cosU1)
 
 	// sigma1 is the angular distance on the sphere from the equator to the
 	// starting point along the geodesic.
-	sigma1 := math.Atan2(tanU1, cosAlpha1)
+	sigma1 := datan2(tanU1, cosAlpha1)
 
 	// alpha is the azimuth of the geodesic at the equator.
-	sinAlpha := cosU1 * sinAlpha1
-	cosSqAlpha := 1 - sinAlpha*sinAlpha
+	sinAlpha := float64(cosU1 * sinAlpha1)
+	cosSqAlpha := 1 - float64(sinAlpha*sinAlpha)
 
-	uSq := cosSqAlpha * (wgs84A*wgs84A - wgs84B*wgs84B) / (wgs84B * wgs84B)
-	aCoef := 1 + uSq/16384*(4096+uSq*(-768+uSq*(320-175*uSq)))
-	bCoef := uSq / 1024 * (256 + uSq*(-128+uSq*(74-47*uSq)))
+	uSq := cosSqAlpha * (wgs84A*wgs84A - wgs84B*wgs84B) / (wgs84B * wgs84B) // constants: exact
+	aCoef := 1 + float64(uSq/16384*(4096+float64(uSq*(-768+float64(uSq*(320-float64(175*uSq)))))))
+	bCoef := float64(uSq / 1024 * (256 + float64(uSq*(-128+float64(uSq*(74-float64(47*uSq)))))))
 
 	// sigma0 is the fixed angular distance term; sigma is refined around it.
 	sigma0 := distMetres / (wgs84B * aCoef)
@@ -61,12 +61,10 @@ func DestinationPoint(lat, lon, bearingDeg, distMetres float64) (destLat, destLo
 	var sinSigma, cosSigma, cos2SigmaM float64
 
 	for i := 0; i < vincentyMaxIter; i++ {
-		cos2SigmaM = math.Cos(2*sigma1 + sigma)
-		sinSigma, cosSigma = math.Sincos(sigma)
+		cos2SigmaM = dcos(float64(2*sigma1) + sigma)
+		sinSigma, cosSigma = dsincos(sigma)
 
-		deltaSigma := bCoef * sinSigma * (cos2SigmaM + bCoef/4*
-			(cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)-
-				bCoef/6*cos2SigmaM*(-3+4*sinSigma*sinSigma)*(-3+4*cos2SigmaM*cos2SigmaM)))
+		deltaSigma := deltaSigmaOf(bCoef, sinSigma, cosSigma, cos2SigmaM)
 
 		next := sigma0 + deltaSigma
 		if math.Abs(next-sigma) < vincentyEps {
@@ -76,22 +74,21 @@ func DestinationPoint(lat, lon, bearingDeg, distMetres float64) (destLat, destLo
 		sigma = next
 	}
 
-	sinSigma, cosSigma = math.Sincos(sigma)
-	cos2SigmaM = math.Cos(2*sigma1 + sigma)
+	sinSigma, cosSigma = dsincos(sigma)
+	cos2SigmaM = dcos(float64(2*sigma1) + sigma)
 
-	tmp := sinU1*sinSigma - cosU1*cosSigma*cosAlpha1
-	phi2 := math.Atan2(
-		sinU1*cosSigma+cosU1*sinSigma*cosAlpha1,
-		(1-wgs84F)*math.Hypot(sinAlpha, tmp),
+	tmp := float64(sinU1*sinSigma) - float64(cosU1*cosSigma*cosAlpha1)
+	phi2 := datan2(
+		float64(sinU1*cosSigma)+float64(cosU1*sinSigma*cosAlpha1),
+		(1-wgs84F)*dhypot(sinAlpha, tmp),
 	)
 
-	lambda := math.Atan2(
+	lambda := datan2(
 		sinSigma*sinAlpha1,
-		cosU1*cosSigma-sinU1*sinSigma*cosAlpha1,
+		float64(cosU1*cosSigma)-float64(sinU1*sinSigma*cosAlpha1),
 	)
-	cCoef := wgs84F / 16 * cosSqAlpha * (4 + wgs84F*(4-3*cosSqAlpha))
-	l := lambda - (1-cCoef)*wgs84F*sinAlpha*
-		(sigma+cCoef*sinSigma*(cos2SigmaM+cCoef*cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)))
+	cCoef := float64(wgs84F / 16 * cosSqAlpha * (4 + float64(wgs84F*(4-float64(3*cosSqAlpha)))))
+	l := lambda - float64((1-cCoef)*wgs84F*sinAlpha*lambdaSeries(sigma, cCoef, sinSigma, cosSigma, cos2SigmaM))
 
 	return deg(phi2), normaliseLon(deg(lambda1 + l))
 }
@@ -119,44 +116,43 @@ func geodesicInverse(lat1, lon1, lat2, lon2 float64) (dist, azimuth float64, ok 
 	phi1, phi2 := rad(lat1), rad(lat2)
 	l := rad(normaliseLon(lon2 - lon1))
 
-	tanU1 := (1 - wgs84F) * math.Tan(phi1)
-	cosU1 := 1 / math.Sqrt(1+tanU1*tanU1)
-	sinU1 := tanU1 * cosU1
+	tanU1 := float64((1 - wgs84F) * dtan(phi1))
+	cosU1 := 1 / math.Sqrt(1+float64(tanU1*tanU1))
+	sinU1 := float64(tanU1 * cosU1)
 
-	tanU2 := (1 - wgs84F) * math.Tan(phi2)
-	cosU2 := 1 / math.Sqrt(1+tanU2*tanU2)
-	sinU2 := tanU2 * cosU2
+	tanU2 := float64((1 - wgs84F) * dtan(phi2))
+	cosU2 := 1 / math.Sqrt(1+float64(tanU2*tanU2))
+	sinU2 := float64(tanU2 * cosU2)
 
 	lambda := l
 	var sinSigma, cosSigma, sigma, cosSqAlpha, cos2SigmaM float64
 
 	converged := false
 	for i := 0; i < vincentyMaxIter; i++ {
-		sinLambda, cosLambda := math.Sincos(lambda)
+		sinLambda, cosLambda := dsincos(lambda)
 
-		sinSigma = math.Hypot(
+		sinSigma = dhypot(
 			cosU2*sinLambda,
-			cosU1*sinU2-sinU1*cosU2*cosLambda,
+			float64(cosU1*sinU2)-float64(sinU1*cosU2*cosLambda),
 		)
 		if sinSigma == 0 {
 			return 0, 0, true // coincident points
 		}
-		cosSigma = sinU1*sinU2 + cosU1*cosU2*cosLambda
-		sigma = math.Atan2(sinSigma, cosSigma)
+		cosSigma = float64(sinU1*sinU2) + float64(cosU1*cosU2*cosLambda)
+		sigma = datan2(sinSigma, cosSigma)
 
-		sinAlpha := cosU1 * cosU2 * sinLambda / sinSigma
-		cosSqAlpha = 1 - sinAlpha*sinAlpha
+		sinAlpha := float64(cosU1 * cosU2 * sinLambda / sinSigma)
+		cosSqAlpha = 1 - float64(sinAlpha*sinAlpha)
 
 		if cosSqAlpha == 0 {
 			cos2SigmaM = 0 // equatorial line
 		} else {
-			cos2SigmaM = cosSigma - 2*sinU1*sinU2/cosSqAlpha
+			cos2SigmaM = cosSigma - float64(2*sinU1*sinU2/cosSqAlpha)
 		}
 
-		cCoef := wgs84F / 16 * cosSqAlpha * (4 + wgs84F*(4-3*cosSqAlpha))
+		cCoef := float64(wgs84F / 16 * cosSqAlpha * (4 + float64(wgs84F*(4-float64(3*cosSqAlpha)))))
 		prev := lambda
-		lambda = l + (1-cCoef)*wgs84F*sinAlpha*
-			(sigma+cCoef*sinSigma*(cos2SigmaM+cCoef*cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)))
+		lambda = l + float64((1-cCoef)*wgs84F*sinAlpha*lambdaSeries(sigma, cCoef, sinSigma, cosSigma, cos2SigmaM))
 
 		if math.Abs(lambda-prev) < vincentyEps {
 			converged = true
@@ -168,20 +164,32 @@ func geodesicInverse(lat1, lon1, lat2, lon2 float64) (dist, azimuth float64, ok 
 		return 0, 0, false
 	}
 
-	uSq := cosSqAlpha * (wgs84A*wgs84A - wgs84B*wgs84B) / (wgs84B * wgs84B)
-	aCoef := 1 + uSq/16384*(4096+uSq*(-768+uSq*(320-175*uSq)))
-	bCoef := uSq / 1024 * (256 + uSq*(-128+uSq*(74-47*uSq)))
+	uSq := cosSqAlpha * (wgs84A*wgs84A - wgs84B*wgs84B) / (wgs84B * wgs84B) // constants: exact
+	aCoef := 1 + float64(uSq/16384*(4096+float64(uSq*(-768+float64(uSq*(320-float64(175*uSq)))))))
+	bCoef := float64(uSq / 1024 * (256 + float64(uSq*(-128+float64(uSq*(74-float64(47*uSq)))))))
 
-	deltaSigma := bCoef * sinSigma * (cos2SigmaM + bCoef/4*
-		(cosSigma*(-1+2*cos2SigmaM*cos2SigmaM)-
-			bCoef/6*cos2SigmaM*(-3+4*sinSigma*sinSigma)*(-3+4*cos2SigmaM*cos2SigmaM)))
+	deltaSigma := deltaSigmaOf(bCoef, sinSigma, cosSigma, cos2SigmaM)
 
-	sinLambda, cosLambda := math.Sincos(lambda)
-	az := deg(math.Atan2(cosU2*sinLambda, cosU1*sinU2-sinU1*cosU2*cosLambda))
+	sinLambda, cosLambda := dsincos(lambda)
+	az := deg(datan2(cosU2*sinLambda, float64(cosU1*sinU2)-float64(sinU1*cosU2*cosLambda)))
 	if az < 0 {
 		az += 360
 	}
 	return wgs84B * aCoef * (sigma - deltaSigma), az, true
+}
+
+// deltaSigmaOf is Vincenty's Δσ series (FMA guarded, detmath.go).
+func deltaSigmaOf(bCoef, sinSigma, cosSigma, cos2SigmaM float64) float64 {
+	c2 := float64(2 * cos2SigmaM * cos2SigmaM)
+	inner := float64(cosSigma*(-1+c2)) -
+		float64(bCoef/6*cos2SigmaM*(-3+float64(4*sinSigma*sinSigma))*(-3+float64(4*cos2SigmaM*cos2SigmaM)))
+	return float64(bCoef * sinSigma * (cos2SigmaM + float64(bCoef/4*inner)))
+}
+
+// lambdaSeries is the bracket of Vincenty's λ − L term (FMA guarded).
+func lambdaSeries(sigma, cCoef, sinSigma, cosSigma, cos2SigmaM float64) float64 {
+	c2 := float64(2 * cos2SigmaM * cos2SigmaM)
+	return sigma + float64(cCoef*sinSigma*(cos2SigmaM+float64(cCoef*cosSigma*(-1+c2))))
 }
 
 // haversine returns the great-circle distance in metres on a sphere of mean
@@ -191,9 +199,9 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	dPhi := rad(lat2 - lat1)
 	dLambda := rad(lon2 - lon1)
 
-	a := math.Sin(dPhi/2)*math.Sin(dPhi/2) +
-		math.Cos(phi1)*math.Cos(phi2)*math.Sin(dLambda/2)*math.Sin(dLambda/2)
-	return meanEarthRadius * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	a := float64(dsin(dPhi/2)*dsin(dPhi/2)) +
+		float64(dcos(phi1)*dcos(phi2)*dsin(dLambda/2)*dsin(dLambda/2))
+	return meanEarthRadius * 2 * datan2(math.Sqrt(a), math.Sqrt(1-a))
 }
 
 // lengthUnits maps a unit of measure to its length in metres.

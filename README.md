@@ -179,8 +179,35 @@ without it, its polygons are packed together unmerged.
 take the shorter way round a closed border), `geo.RhumbLine` densifies a
 rhumb line (WGS-84 loxodrome) into geodesic pieces within a tolerance.
 
+`geo.Options{At: t}` reads referenced `GeoBorder`s and contributor airspaces
+from their time slice valid at `t` (SNAPSHOT/BASELINE, latest start, then
+sequence and correction number) instead of their first slice; zero keeps the
+first slice.
+
 `geo.DensifyVersion` changes whenever the same options give different
-positions, for callers that store converted geometry.
+positions, for callers that store converted geometry.  The conversion gives
+the same bits on every architecture: products on the computation path are
+rounded explicitly (`float64(x*y)`), so the Go compiler cannot fuse them into
+FMA instructions (it does on arm64, not on amd64), and the trigonometric
+functions are FMA-guarded copies of the `math` package's (`geo/detmath.go`;
+`TestDeterminismDigest` pins a digest, run it with `GOARCH=amd64` and
+`arm64`).  `geo.RhumbLine` is not covered (it uses `math.Atanh`/`Sinh`).
+
+### Source geometry
+
+`geo.SourceOf(featureNode, slice)` returns a feature slice's geometry exactly
+as written, without processing (`geo.SourceGeometry`): segment types in
+document order, interpolation, arc centres, radii and bearings with units,
+every coordinate as its decimal text, `srsName`/`srsDimension`, gml:ids,
+curve members by reference, and an airspace's components (operation,
+sequence, width, contributor) as written.  It works on the lossless element
+tree (`Member.Node`, needs `Options.KeepRaw`), since the decoded structs hold
+radii and angles as `float64`.  `Canonical` (sorted keys, strings only) and
+`Hash` (sha256) are stable, also for a copy stored in another key order
+(`geo.CanonicalJSON`).  `geo.NewSourceResolver(msg, opt).Deps(src)` lists the
+referenced GeoBorders, contributor airspaces and arc-centre features with the
+slice the conversion uses and the hash of their source geometry
+(transitively, `Via`).
 
 The `Options` methods mirror the package functions (`SegmentCoords`,
 `CurveCoords`, `SurfaceRings`, `SurfacePolygons`, `AirspaceComponents`,

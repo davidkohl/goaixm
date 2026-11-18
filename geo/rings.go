@@ -89,7 +89,7 @@ func closeRing(ring [][2]float64) [][2]float64 {
 func signedArea(ring [][2]float64) float64 {
 	var sum float64
 	for i := 0; i < len(ring)-1; i++ {
-		sum += ring[i][0]*ring[i+1][1] - ring[i+1][0]*ring[i][1]
+		sum += float64(ring[i][0]*ring[i+1][1]) - float64(ring[i+1][0]*ring[i][1])
 	}
 	return sum
 }
@@ -306,7 +306,7 @@ func borderPoint(line [][2]float64, s float64) [2]float64 {
 	}
 	t := s - float64(i)
 	a, b := line[i], line[i+1]
-	return [2]float64{a[0] + t*(b[0]-a[0]), a[1] + t*(b[1]-a[1])}
+	return [2]float64{a[0] + float64(t*(b[0]-a[0])), a[1] + float64(t*(b[1]-a[1]))}
 }
 
 // crossesBefore reports whether the straight lon/lat segment q→p crosses
@@ -323,13 +323,13 @@ func crossesBefore(q, p [2]float64, line [][2]float64) bool {
 			continue
 		}
 		sx, sy := b[0]-a[0], b[1]-a[1]
-		den := rx*sy - ry*sx
+		den := float64(rx*sy) - float64(ry*sx)
 		if den == 0 {
 			continue // parallel
 		}
 		ax, ay := a[0]-q[0], a[1]-q[1]
-		t := (ax*sy - ay*sx) / den // along q→p
-		u := (ax*ry - ay*rx) / den // along a→b
+		t := (float64(ax*sy) - float64(ay*sx)) / den // along q→p
+		u := (float64(ax*ry) - float64(ay*rx)) / den // along a→b
 		if t >= 0 && t < 1-1e-9 && u >= 0 && u <= 1 {
 			return true
 		}
@@ -430,18 +430,18 @@ func junctionIndex(b, other [][2]float64) int {
 func project(border [][2]float64, p [2]float64) float64 {
 	best, bestD := 0.0, math.Inf(1)
 	// Scale longitude so that distances are roughly isotropic.
-	k := math.Cos(p[1] * math.Pi / 180)
+	k := float64(dcos(p[1] * math.Pi / 180))
 	for i := 0; i+1 < len(border); i++ {
 		a, b := border[i], border[i+1]
-		ax, ay := (a[0]-p[0])*k, a[1]-p[1]
-		bx, by := (b[0]-p[0])*k, b[1]-p[1]
+		ax, ay := float64((a[0]-p[0])*k), a[1]-p[1]
+		bx, by := float64((b[0]-p[0])*k), b[1]-p[1]
 		dx, dy := bx-ax, by-ay
 		t := 0.0
-		if l := dx*dx + dy*dy; l > 0 {
-			t = math.Max(0, math.Min(1, -(ax*dx+ay*dy)/l))
+		if l := float64(dx*dx) + float64(dy*dy); l > 0 {
+			t = math.Max(0, math.Min(1, -(float64(ax*dx)+float64(ay*dy))/l))
 		}
-		x, y := ax+t*dx, ay+t*dy
-		if d := x*x + y*y; d < bestD {
+		x, y := ax+float64(t*dx), ay+float64(t*dy)
+		if d := float64(x*x) + float64(y*y); d < bestD {
 			best, bestD = float64(i)+t, d
 		}
 	}
@@ -543,15 +543,15 @@ const maxJoinGap = 1000.0
 // (equirectangular; adequate for distances of a few kilometres).
 func distMetres(a, b [2]float64) float64 {
 	const r = 6371008.8
-	lat := (a[1] + b[1]) / 2 * math.Pi / 180
-	dx := (b[0] - a[0]) * math.Pi / 180 * math.Cos(lat)
-	dy := (b[1] - a[1]) * math.Pi / 180
-	return r * math.Hypot(dx, dy)
+	lat := float64((a[1] + b[1]) / 2 * math.Pi / 180)
+	dx := float64((b[0] - a[0]) * math.Pi / 180 * dcos(lat))
+	dy := float64((b[1] - a[1]) * math.Pi / 180)
+	return r * dhypot(dx, dy)
 }
 
 func dist2(a, b [2]float64) float64 {
 	dx, dy := a[0]-b[0], a[1]-b[1]
-	return dx*dx + dy*dy
+	return float64(dx*dx) + float64(dy*dy)
 }
 
 // nearestIndex returns the index of the border position closest to p.
@@ -579,10 +579,8 @@ func resolveBorderCurve(href string, cv *conv, msg *goaixm.Message) ([][2]float6
 	if !ok {
 		return nil, fmt.Errorf("geojson: reference %s is not a GeoBorder", href)
 	}
-	for _, ts := range border.TimeSlice {
-		if segs := ts.Border.Segments(); segs != nil {
-			return segmentsToCoords(segs, cv, msg)
-		}
+	if i := cv.borderSlice(border); i >= 0 {
+		return segmentsToCoords(border.TimeSlice[i].Border.Segments(), cv, msg)
 	}
 	return nil, fmt.Errorf("geojson: referenced border %s has no curve", href)
 }

@@ -83,16 +83,16 @@ func geodesicInterior(a, b [2]float64, tol float64) [][2]float64 {
 // for m near the segment, which is the case it is used for.
 func chordDeviation(m, p, q [2]float64) float64 {
 	phi := rad(m[1])
-	s := math.Sin(phi)
-	w := math.Sqrt(1 - wgs84E2*s*s)
+	s := dsin(phi)
+	w := math.Sqrt(1 - float64(wgs84E2*s*s))
 	ky := rad(wgs84A * (1 - wgs84E2) / (w * w * w)) // metres per degree of latitude
-	kx := rad(wgs84A / w * math.Cos(phi))           // metres per degree of longitude
-	px, py := (p[0]-m[0])*kx, (p[1]-m[1])*ky
-	qx, qy := (q[0]-m[0])*kx, (q[1]-m[1])*ky
+	kx := rad(wgs84A / w * dcos(phi))               // metres per degree of longitude
+	px, py := float64((p[0]-m[0])*kx), float64((p[1]-m[1])*ky)
+	qx, qy := float64((q[0]-m[0])*kx), float64((q[1]-m[1])*ky)
 	dx, dy := qx-px, qy-py
 	t := 0.0
-	if l := dx*dx + dy*dy; l > 0 {
-		t = math.Max(0, math.Min(1, -(px*dx+py*dy)/l))
+	if l := float64(dx*dx) + float64(dy*dy); l > 0 {
+		t = math.Max(0, math.Min(1, -(float64(px*dx)+float64(py*dy))/l))
 	}
-	return math.Hypot(px+t*dx, py+t*dy)
+	return dhypot(px+float64(t*dx), py+float64(t*dy))
 }

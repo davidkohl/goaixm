@@ -206,7 +206,7 @@ func nestedContributor(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message) 
 	if sub == nil || len(sub.TimeSlice) == 0 {
 		return nil
 	}
-	return sub
+	return cv.refAirspace(sub)
 }
 
 // unresolvedContributor returns the contributor airspace reference of vol

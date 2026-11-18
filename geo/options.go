@@ -1,6 +1,8 @@
 package geo
 
 import (
+	"time"
+
 	"github.com/davidkohl/goaixm"
 	"github.com/davidkohl/goaixm/aixm"
 	"github.com/davidkohl/goaixm/gml"
@@ -86,6 +88,18 @@ type Options struct {
 	// of the end piece still lead to the source vertex), so that geometry
 	// stored with version 1 can be recognised.  Do not use for new data.
 	LegacySnapAfterDensify bool
+
+	// At, when not zero, chooses the time slice of a referenced GeoBorder
+	// or contributor airspace by AIXM temporality: among its SNAPSHOT and
+	// BASELINE slices valid at this instant, the one with the latest
+	// start, then the highest sequenceNumber, then correctionNumber.  When
+	// none is valid then (or, for a GeoBorder, the valid one has no
+	// curve), the default applies.  Zero (default): the referenced
+	// feature's first time slice in document order (GeoBorder: the first
+	// with a border curve), whatever the instant the referencing feature
+	// is read at.  The referencing feature's own slice is the caller's
+	// choice (AirspaceComponents reads the first).
+	At time.Time
 
 	// OnRepair, if set, receives every repair made to the source geometry
 	// (BorderSnapTolerance).  It is called synchronously.

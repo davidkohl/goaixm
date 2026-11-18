@@ -21,7 +21,7 @@ import (
 func arcPointCount(sweepDeg, radius, tol float64) int {
 	var n int
 	if tol > 0 && radius > tol {
-		step := 2 * deg(math.Acos(1-tol/radius))
+		step := 2 * deg(dacos(1-tol/radius))
 		n = int(math.Ceil(math.Abs(sweepDeg)/step - 1e-9))
 	} else {
 		n = int(math.Ceil(float64(DefaultArcPoints) * math.Abs(sweepDeg) / 360))
@@ -204,7 +204,7 @@ func discretizeArc(pos []gml.DirectPosition, posList *gml.DirectPositionList, to
 	b3 := bearingTo(cy, cx, lat3, lon3)
 
 	// The middle point disambiguates which way round the arc runs.
-	cross := (lon2-lon1)*(lat3-lat1) - (lat2-lat1)*(lon3-lon1)
+	cross := float64((lon2-lon1)*(lat3-lat1)) - float64((lat2-lat1)*(lon3-lon1))
 	sweep := b3 - b1
 	if cross > 0 { // counter-clockwise in lon/lat space
 		for sweep > 0 {
@@ -249,9 +249,9 @@ func discretizeCircle(pos []gml.DirectPosition, posList *gml.DirectPositionList,
 func bearingTo(lat1, lon1, lat2, lon2 float64) float64 {
 	phi1, phi2 := rad(lat1), rad(lat2)
 	dLambda := rad(lon2 - lon1)
-	y := math.Sin(dLambda) * math.Cos(phi2)
-	x := math.Cos(phi1)*math.Sin(phi2) - math.Sin(phi1)*math.Cos(phi2)*math.Cos(dLambda)
-	b := deg(math.Atan2(y, x))
+	y := float64(dsin(dLambda) * dcos(phi2))
+	x := float64(dcos(phi1)*dsin(phi2)) - float64(dsin(phi1)*dcos(phi2)*dcos(dLambda))
+	b := deg(datan2(y, x))
 	if b < 0 {
 		b += 360
 	}
@@ -274,15 +274,15 @@ func arcPoints(pos []gml.DirectPosition, posList *gml.DirectPositionList) ([][2]
 func circumcenter(x1, y1, x2, y2, x3, y3 float64) (cx, cy, r float64) {
 	ax, ay := x2-x1, y2-y1
 	bx, by := x3-x1, y3-y1
-	D := 2 * (ax*by - ay*bx)
+	D := 2 * (float64(ax*by) - float64(ay*bx))
 	if math.Abs(D) < 1e-12 {
 		// Degenerate / collinear points — return midpoint and zero radius.
 		return (x1 + x3) / 2, (y1 + y3) / 2, 0
 	}
-	ux := (by*(ax*ax+ay*ay) - ay*(bx*bx+by*by)) / D
-	uy := (ax*(bx*bx+by*by) - bx*(ax*ax+ay*ay)) / D
+	ux := (float64(by*(float64(ax*ax)+float64(ay*ay))) - float64(ay*(float64(bx*bx)+float64(by*by)))) / D
+	uy := (float64(ax*(float64(bx*bx)+float64(by*by))) - float64(bx*(float64(ax*ax)+float64(ay*ay)))) / D
 	cx = x1 + ux
 	cy = y1 + uy
-	r = math.Hypot(ux, uy)
+	r = dhypot(ux, uy)
 	return
 }

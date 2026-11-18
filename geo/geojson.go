@@ -290,7 +290,7 @@ func resolveContributors(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message
 	}
 
 	base := cv.ringBase
-	fc, err := airspaceToGeoJSONDepth(sub, cv, msg, depth+1)
+	fc, err := airspaceToGeoJSONDepth(cv.refAirspace(sub), cv, msg, depth+1)
 	cv.ringBase = base
 	if err != nil {
 		// A contributor we cannot convert simply contributes nothing; the
