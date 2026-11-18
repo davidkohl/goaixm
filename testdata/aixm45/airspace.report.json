@@ -1,0 +1,1855 @@
+{
+  "format": 1,
+  "converter": {
+    "name": "goaixm/aixm45to51",
+    "version": "0.3.0",
+    "mappingDigest": "346f477b5bfbef0baf598c77fd1acd0c0ec14d3df3555ca0c67fbde5884b81a4",
+    "module": ""
+  },
+  "from": "4.5",
+  "to": "5.1.1",
+  "source": {
+    "name": "in.xml",
+    "bytes": 28986,
+    "sha256": "008a4f058fcc4bd1d326714e925856b30666aa37ddc1a77dbafa9957c6941359",
+    "version": "4.5",
+    "root": "AIXM-Snapshot",
+    "attrs": {
+      "created": "2030-01-02T10:00:00Z",
+      "effective": "2030-01-24T00:00:00Z",
+      "origin": "Example producer",
+      "version": "4.5"
+    }
+  },
+  "output": {
+    "records": 24,
+    "bytes": 58823,
+    "sha256": "bf774135db724dabc554fa0013c4f7f0e533b46bf4a79aba268e0c7ffc9e0fee"
+  },
+  "kinds": {
+    "AIXM-Snapshot": {
+      "in": 1,
+      "out": 0,
+      "merged": 1,
+      "dropped": 0,
+      "leaves": 4,
+      "elements": {
+        "AIXM-Snapshot/@created": {
+          "target": "AIXMBasicMessage header comment (convert.Header.Attrs)",
+          "rule": "HDR-ATTR",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@effective": {
+          "target": "*TimeSlice/validTime/TimePeriod/beginPosition; */featureLifetime/TimePeriod/beginPosition",
+          "rule": "HDR-EFF",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@origin": {
+          "target": "AIXMBasicMessage header comment (convert.Header.Attrs)",
+          "rule": "HDR-ATTR",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "AIXM-Snapshot/@version": {
+          "target": "AIXMBasicMessage (AIXM 5.1.1)",
+          "rule": "HDR-VER",
+          "outcomes": {
+            "derived": 1
+          },
+          "samples": [
+            {
+              "value": "4.5"
+            }
+          ]
+        }
+      }
+    },
+    "Abd": {
+      "in": 20,
+      "out": 0,
+      "merged": 18,
+      "dropped": 2,
+      "leaves": 358,
+      "elements": {
+        "Abd/AbdUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 18
+          }
+        },
+        "Abd/AbdUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 18
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))",
+              "value": "2001"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XR2;codeType=R))",
+              "value": "2003"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XRHL;codeType=D))",
+              "value": "2005"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "2007"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XCCA;codeType=P))",
+              "value": "2009"
+            }
+          ]
+        },
+        "Abd/AbdUid/AseUid/codeId": {
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
+          "outcomes": {
+            "derived": 18
+          }
+        },
+        "Abd/AbdUid/AseUid/codeType": {
+          "target": "Airspace (the boundary's airspace)",
+          "rule": "ABD-ASE",
+          "outcomes": {
+            "derived": 18
+          }
+        },
+        "Abd/Avx[ABD-UNUSED]/codeDatum": {
+          "target": "-",
+          "rule": "ABD-UNUSED",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCV;codeType=D))",
+              "value": "WGE"
+            }
+          ]
+        },
+        "Abd/Avx[ABD-UNUSED]/codeType": {
+          "target": "-",
+          "rule": "ABD-UNUSED",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCV;codeType=D))",
+              "value": "GRC"
+            }
+          ]
+        },
+        "Abd/Avx[ABD-UNUSED]/geoLat": {
+          "target": "-",
+          "rule": "ABD-UNUSED",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCV;codeType=D))",
+              "value": "100000N"
+            }
+          ]
+        },
+        "Abd/Avx[ABD-UNUSED]/geoLong": {
+          "target": "-",
+          "rule": "ABD-UNUSED",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCV;codeType=D))",
+              "value": "0280000E"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CCA]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CCA]/codeType": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Abd/Avx[codeType=CCA]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCCA;codeType=P))",
+              "value": "102959.96N",
+              "note": "replaced by the computed arc end 0.048 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CCA]/geoLatArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CCA]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCCA;codeType=P))",
+              "value": "0220504.53E",
+              "note": "replaced by the computed arc end 0.048 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CCA]/geoLongArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CCA]/uomRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CCA]/valRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/VorUidCen/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "77"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/VorUidCen/codeId": {
+          "target": "-",
+          "rule": "AVX-CENREF",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "XVR"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/VorUidCen/geoLat": {
+          "target": "-",
+          "rule": "AVX-CENREF",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "100000N"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/VorUidCen/geoLong": {
+          "target": "-",
+          "rule": "AVX-CENREF",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "0220000E"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Abd/Avx[codeType=CWA]/codeType": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "derived": 2,
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XZERO;codeType=D))",
+              "value": "CWA",
+              "note": "zero-length arc omitted"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 2
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "100501.39N",
+              "note": "replaced by the computed arc end 0.043 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/geoLatArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Abd/Avx[codeType=CWA]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 2
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "0220000.00E",
+              "note": "replaced by the computed arc end 0.043 m away"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=CWA]/geoLongArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Abd/Avx[codeType=CWA]/txtRmk": {
+          "target": "…/AirspaceVolume/annotation/Note[propertyName=horizontalProjection, purpose=REMARK]",
+          "rule": "AVX-RMK",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=CWA]/uomRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Abd/Avx[codeType=CWA]/valRadiusArc": {
+          "target": "gml:ArcByCenterPoint (pos, radius, startAngle, endAngle)",
+          "rule": "AVX-ARC",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Abd/Avx[codeType=FNT]/GbrUid/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 4
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XFNT;codeType=RAS))",
+              "value": "3001"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XFAR;codeType=RAS))",
+              "value": "3001"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XMISS;codeType=RAS))",
+              "value": "3999"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XISL;codeType=RAS))",
+              "value": "3002"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=FNT]/GbrUid/txtName": {
+          "target": "border stretch from vertex i to vertex i+1 (geo.BorderStretch)",
+          "rule": "AVX-FNT",
+          "outcomes": {
+            "derived": 3,
+            "invalid": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XMISS;codeType=RAS))",
+              "value": "EXAMPLE NOWHERE"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=FNT]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Abd/Avx[codeType=FNT]/codeType": {
+          "target": "border stretch from vertex i to vertex i+1 (geo.BorderStretch)",
+          "rule": "AVX-FNT",
+          "outcomes": {
+            "derived": 3,
+            "invalid": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XMISS;codeType=RAS))",
+              "value": "FNT",
+              "note": "border not in the document: great circle used"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=FNT]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Abd/Avx[codeType=FNT]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Abd/Avx[codeType=GRC]/DpnUidSpn/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "78"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/DpnUidSpn/codeId": {
+          "target": "-",
+          "rule": "AVX-SPN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "XPNT"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/DpnUidSpn/geoLat": {
+          "target": "-",
+          "rule": "AVX-SPN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "095959.96N"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/DpnUidSpn/geoLong": {
+          "target": "-",
+          "rule": "AVX-SPN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "0220504.05E"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 43
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XBAD;codeType=D))",
+              "value": "U",
+              "note": "coordinates not transformed"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/codeType": {
+          "target": "gml:GeodesicString",
+          "rule": "AVX-GRC",
+          "outcomes": {
+            "invalid": 1,
+            "lossy": 1,
+            "mapped": 42
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XBAD;codeType=D))",
+              "value": "GRC",
+              "note": "vertex dropped"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XPT;codeType=D-OTHER))",
+              "value": "GRC",
+              "note": "boundary encloses no area"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "invalid": 1,
+            "lossy": 3,
+            "mapped": 40
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "095959.96N",
+              "note": "replaced by the computed arc end 0.042 m away"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XCCA;codeType=P))",
+              "value": "103501.38N",
+              "note": "replaced by the computed arc end 0.022 m away"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XBAD;codeType=D))",
+              "value": "999999N",
+              "note": "position not usable: vertex dropped"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XPT;codeType=D-OTHER))",
+              "value": "101000N",
+              "note": "boundary encloses no area: position kept in a note"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "invalid": 1,
+            "lossy": 3,
+            "mapped": 40
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "0220504.05E",
+              "note": "replaced by the computed arc end 0.042 m away"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XCCA;codeType=P))",
+              "value": "0220000.00E",
+              "note": "replaced by the computed arc end 0.022 m away"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XBAD;codeType=D))",
+              "value": "0240000E",
+              "note": "position not usable: vertex dropped"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XPT;codeType=D-OTHER))",
+              "value": "0250000E",
+              "note": "boundary encloses no area: position kept in a note"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=GRC]/valCrc": {
+          "target": "-",
+          "rule": "GEN-CRC",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XARC;codeType=P))",
+              "value": "01020304"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=RHL]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Avx[codeType=RHL]/codeType": {
+          "target": "gml:GeodesicString with positions on the rhumb line",
+          "rule": "AVX-RHL",
+          "outcomes": {
+            "lossy": 2
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XRHL;codeType=D))",
+              "value": "RHL",
+              "note": "rhumb line as a geodesic string, 6 positions added"
+            },
+            {
+              "key": "Abd(AseUid(codeId=XRHL;codeType=D))",
+              "value": "RHL",
+              "note": "rhumb line as a geodesic string, 6 positions added"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=RHL]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Avx[codeType=RHL]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Avx[codeType=XYZ]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=XYZ]/codeType": {
+          "target": "gml:GeodesicString",
+          "rule": "AVX-GRC",
+          "outcomes": {
+            "invalid": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XBAD;codeType=D))",
+              "value": "XYZ",
+              "note": "unknown codeType: taken as a great circle"
+            }
+          ]
+        },
+        "Abd/Avx[codeType=XYZ]/geoLat": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Avx[codeType=XYZ]/geoLong": {
+          "target": "…/horizontalProjection/Surface/…/Ring positions",
+          "rule": "AVX-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd/Circle/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Circle/geoLatCen": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Circle/geoLongCen": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Circle/uomRadius": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/Circle/valCrc": {
+          "target": "-",
+          "rule": "GEN-CRC",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XCIR;codeType=CTR))",
+              "value": "0A0B0C0E"
+            }
+          ]
+        },
+        "Abd/Circle/valRadius": {
+          "target": "gml:CircleByCenterPoint (pos, radius)",
+          "rule": "CIR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Abd/txtRmk": {
+          "target": "…/AirspaceVolume/annotation/Note[propertyName=horizontalProjection, purpose=REMARK]",
+          "rule": "AVX-RMK",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Abd[ABD-DUP]/AbdUid/@mid": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "2051"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/AbdUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "2001"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/AbdUid/AseUid/codeId": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "XR1"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/AbdUid/AseUid/codeType": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "R"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/Avx/codeDatum": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "WGE"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/Avx/codeType": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "GRC"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/Avx/geoLat": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "100000N"
+            }
+          ]
+        },
+        "Abd[ABD-DUP]/Avx/geoLong": {
+          "target": "-",
+          "rule": "ABD-DUP",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XR1;codeType=R))#2",
+              "value": "0270000E"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/AbdUid/@mid": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "2050"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/AbdUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "2049"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/AbdUid/AseUid/codeId": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "XGONE"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/AbdUid/AseUid/codeType": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "D"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/Avx/codeDatum": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "WGE"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/Avx/codeType": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "GRC"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/Avx/geoLat": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "100000N"
+            }
+          ]
+        },
+        "Abd[ABD-ORPHAN]/Avx/geoLong": {
+          "target": "-",
+          "rule": "ABD-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Abd(AseUid(codeId=XGONE;codeType=D))",
+              "value": "0270000E"
+            }
+          ]
+        }
+      }
+    },
+    "Adg": {
+      "in": 4,
+      "out": 0,
+      "merged": 2,
+      "dropped": 2,
+      "leaves": 33,
+      "elements": {
+        "Adg/AdgUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Adg/AdgUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 2
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XSEC;codeType=SECTOR-C))",
+              "value": "2040"
+            },
+            {
+              "key": "Adg(AseUid(codeId=XSAME;codeType=TMA))",
+              "value": "2042"
+            }
+          ]
+        },
+        "Adg/AdgUid/AseUid/codeId": {
+          "target": "Airspace (the derived airspace)",
+          "rule": "ADG-ASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AdgUid/AseUid/codeType": {
+          "target": "Airspace (the derived airspace)",
+          "rule": "ADG-ASE",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidBase/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XSEC;codeType=SECTOR-C))",
+              "value": "2001"
+            }
+          ]
+        },
+        "Adg/AseUidBase/codeId": {
+          "target": "Airspace/geometryComponent[operation=BASE, operationSequence=1]/…/contributorAirspace",
+          "rule": "ADG-BASE",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Adg/AseUidBase/codeType": {
+          "target": "Airspace/geometryComponent[operation=BASE, operationSequence=1]/…/contributorAirspace",
+          "rule": "ADG-BASE",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Adg/AseUidComponent/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 2
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XSEC;codeType=SECTOR-C))",
+              "value": "2003"
+            },
+            {
+              "key": "Adg(AseUid(codeId=XSEC;codeType=SECTOR-C))",
+              "value": "2005"
+            }
+          ]
+        },
+        "Adg/AseUidComponent/codeId": {
+          "target": "Airspace/geometryComponent[operation=codeOpr, operationSequence=n]/…/contributorAirspace",
+          "rule": "ADG-COMP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidComponent/codeType": {
+          "target": "Airspace/geometryComponent[operation=codeOpr, operationSequence=n]/…/contributorAirspace",
+          "rule": "ADG-COMP",
+          "outcomes": {
+            "derived": 2
+          }
+        },
+        "Adg/AseUidSameExtent/@mid": {
+          "target": "-",
+          "rule": "REF-MID",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XSAME;codeType=TMA))",
+              "value": "2001"
+            }
+          ]
+        },
+        "Adg/AseUidSameExtent/codeId": {
+          "target": "Airspace/geometryComponent (BASE)/…/contributorAirspace/AirspaceVolumeDependency/theAirspace",
+          "rule": "ADG-SAME",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Adg/AseUidSameExtent/codeType": {
+          "target": "Airspace/geometryComponent (BASE)/…/contributorAirspace/AirspaceVolumeDependency/theAirspace",
+          "rule": "ADG-SAME",
+          "outcomes": {
+            "derived": 1
+          }
+        },
+        "Adg/codeOpr": {
+          "target": "…/AirspaceGeometryComponent/operation",
+          "rule": "ADG-OPR",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Adg[ADG-ORPHAN]/AdgUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "2049"
+            }
+          ]
+        },
+        "Adg[ADG-ORPHAN]/AdgUid/AseUid/codeId": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "XGONE"
+            }
+          ]
+        },
+        "Adg[ADG-ORPHAN]/AdgUid/AseUid/codeType": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "D"
+            }
+          ]
+        },
+        "Adg[ADG-ORPHAN]/AseUidSameExtent/@mid": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "2001"
+            }
+          ]
+        },
+        "Adg[ADG-ORPHAN]/AseUidSameExtent/codeId": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "XR1"
+            }
+          ]
+        },
+        "Adg[ADG-ORPHAN]/AseUidSameExtent/codeType": {
+          "target": "-",
+          "rule": "ADG-ORPHAN",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XGONE;codeType=D))",
+              "value": "R"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AdgUid/AseUid/@mid": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "2044"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AdgUid/AseUid/codeId": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "XBOTH"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AdgUid/AseUid/codeType": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "D"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AseUidSameExtent/@mid": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "2001"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AseUidSameExtent/codeId": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "XR1"
+            }
+          ]
+        },
+        "Adg[ADG-SHADOW]/AseUidSameExtent/codeType": {
+          "target": "-",
+          "rule": "ADG-SHADOW",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Adg(AseUid(codeId=XBOTH;codeType=D))",
+              "value": "R"
+            }
+          ]
+        }
+      }
+    },
+    "Ase": {
+      "in": 21,
+      "out": 21,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 163,
+      "defaults": 21,
+      "elements": {
+        "Ase/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 21
+          }
+        },
+        "Ase/AseUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 21
+          }
+        },
+        "Ase/AseUid/codeId": {
+          "target": "Airspace/designator",
+          "rule": "ASE-DESIG",
+          "outcomes": {
+            "mapped": 21
+          }
+        },
+        "Ase/AseUid/codeType": {
+          "target": "Airspace/type",
+          "rule": "ASE-TYPE",
+          "outcomes": {
+            "mapped": 21
+          }
+        },
+        "Ase/Att/Timsh/codeCombTil": {
+          "target": "…/Timesheet/startEventInterpretation, endEventInterpretation",
+          "rule": "TSH-COMB",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeCombWef": {
+          "target": "…/Timesheet/startEventInterpretation, endEventInterpretation",
+          "rule": "TSH-COMB",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeDay": {
+          "target": "…/Timesheet/day, dayTil",
+          "rule": "TSH-DAY",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/Att/Timsh/codeDayTil": {
+          "target": "…/Timesheet/day, dayTil",
+          "rule": "TSH-DAY",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeEventTil": {
+          "target": "…/Timesheet/startEvent, endEvent",
+          "rule": "TSH-EVENT",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeEventWef": {
+          "target": "…/Timesheet/startEvent, endEvent",
+          "rule": "TSH-EVENT",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/codeTimeRef": {
+          "target": "…/Timesheet/timeReference",
+          "rule": "TSH-REF",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/Att/Timsh/dateValidTil": {
+          "target": "…/Timesheet/startDate, endDate",
+          "rule": "TSH-DATE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/Att/Timsh/dateValidWef": {
+          "target": "…/Timesheet/startDate, endDate",
+          "rule": "TSH-DATE",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/Att/Timsh/timeRelEventTil": {
+          "target": "…/Timesheet/startTimeRelativeEvent, endTimeRelativeEvent (uom MIN)",
+          "rule": "TSH-REL",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/timeRelEventWef": {
+          "target": "…/Timesheet/startTimeRelativeEvent, endTimeRelativeEvent (uom MIN)",
+          "rule": "TSH-REL",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/Att/Timsh/timeTil": {
+          "target": "…/Timesheet/startTime, endTime",
+          "rule": "TSH-TIME",
+          "outcomes": {
+            "lossy": 1,
+            "mapped": 1
+          },
+          "samples": [
+            {
+              "key": "Ase(codeId=XRHL;codeType=D)",
+              "value": "25:00",
+              "note": "not a valid TimeType: kept as a note (GEN-VALUE)"
+            }
+          ]
+        },
+        "Ase/Att/Timsh/timeWef": {
+          "target": "…/Timesheet/startTime, endTime",
+          "rule": "TSH-TIME",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/Att/codeWorkHr": {
+          "target": "Airspace/activation/AirspaceActivation (timeInterval/Timesheet, status)",
+          "rule": "ATT-WORKHR",
+          "outcomes": {
+            "derived": 3,
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Ase(codeId=XARC;codeType=P)",
+              "value": "HX",
+              "note": "no fixed hours: kept as a note"
+            }
+          ]
+        },
+        "Ase/Att/txtRmkWorkHr": {
+          "target": "…/AirspaceActivation/annotation/Note[purpose=REMARK]",
+          "rule": "ATT-RMK",
+          "outcomes": {
+            "mapped": 2
+          }
+        },
+        "Ase/codeActivity": {
+          "target": "Airspace/activation/AirspaceActivation/activity",
+          "rule": "ASE-ACTIVITY",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/codeClass": {
+          "target": "Airspace/class/AirspaceLayerClass/classification",
+          "rule": "ASE-CLASS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/codeDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimitReference",
+          "rule": "ASE-LOWERREF",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Ase/codeDistVerMax": {
+          "target": "…/AirspaceVolume/maximumLimitReference",
+          "rule": "ASE-MAXREF",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/codeDistVerMnm": {
+          "target": "…/AirspaceVolume/minimumLimitReference",
+          "rule": "ASE-MINREF",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/codeDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimitReference",
+          "rule": "ASE-UPPERREF",
+          "outcomes": {
+            "mapped": 10
+          }
+        },
+        "Ase/codeLocInd": {
+          "target": "-",
+          "rule": "ASE-LOCIND",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Ase(codeId=XR1;codeType=R)",
+              "value": "XXXX"
+            }
+          ]
+        },
+        "Ase/txtLocalType": {
+          "target": "Airspace/localType",
+          "rule": "ASE-LOCALTYPE",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/txtName": {
+          "target": "Airspace/name",
+          "rule": "ASE-NAME",
+          "outcomes": {
+            "mapped": 21
+          }
+        },
+        "Ase/txtRmk": {
+          "target": "*/annotation/Note[purpose=REMARK]",
+          "rule": "GEN-RMK",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/uomDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimit",
+          "rule": "ASE-LOWER",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Ase/uomDistVerMax": {
+          "target": "…/AirspaceVolume/maximumLimit",
+          "rule": "ASE-MAX",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/uomDistVerMnm": {
+          "target": "…/AirspaceVolume/minimumLimit",
+          "rule": "ASE-MIN",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/uomDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
+          "outcomes": {
+            "mapped": 10
+          }
+        },
+        "Ase/valCrc": {
+          "target": "-",
+          "rule": "GEN-CRC",
+          "outcomes": {
+            "unmapped": 1
+          },
+          "samples": [
+            {
+              "key": "Ase(codeId=XR1;codeType=R)",
+              "value": "0A0B0C0D"
+            }
+          ]
+        },
+        "Ase/valDistVerLower": {
+          "target": "…/AirspaceVolume/lowerLimit",
+          "rule": "ASE-LOWER",
+          "outcomes": {
+            "mapped": 4
+          }
+        },
+        "Ase/valDistVerMax": {
+          "target": "…/AirspaceVolume/maximumLimit",
+          "rule": "ASE-MAX",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/valDistVerMnm": {
+          "target": "…/AirspaceVolume/minimumLimit",
+          "rule": "ASE-MIN",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Ase/valDistVerUpper": {
+          "target": "…/AirspaceVolume/upperLimit",
+          "rule": "ASE-UPPER",
+          "outcomes": {
+            "mapped": 10
+          }
+        }
+      }
+    },
+    "Gbr": {
+      "in": 3,
+      "out": 3,
+      "merged": 0,
+      "dropped": 0,
+      "leaves": 57,
+      "defaults": 3,
+      "elements": {
+        "Gbr/(featureLifetime)": {
+          "target": "*/featureLifetime",
+          "rule": "TS-LIFE",
+          "outcomes": {
+            "defaulted": 3
+          }
+        },
+        "Gbr/GbrUid/@mid": {
+          "target": "convert.Provenance.SourceIDs",
+          "rule": "ID-MID",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/GbrUid/txtName": {
+          "target": "GeoBorder/name",
+          "rule": "GBR-NAME",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/Gbv[codeType=END]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/Gbv[codeType=END]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/Gbv[codeType=END]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/Gbv[codeType=END]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 3
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 8
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/codeType": {
+          "target": "GeoBorder/border/Curve/GeodesicString",
+          "rule": "GBV-TYPE",
+          "outcomes": {
+            "mapped": 8
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 8
+          }
+        },
+        "Gbr/Gbv[codeType=GRC]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 8
+          }
+        },
+        "Gbr/Gbv[codeType=RHL]/codeDatum": {
+          "target": "srsName urn:ogc:def:crs:EPSG::4326 (WGE); other values: */annotation/Note[purpose=WARNING]",
+          "rule": "GEO-DATUM",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=RHL]/codeType": {
+          "target": "geodesic string with positions on the rhumb line",
+          "rule": "GBV-RHL",
+          "outcomes": {
+            "lossy": 1
+          },
+          "samples": [
+            {
+              "key": "Gbr(txtName=EXAMPLE PARALLEL)",
+              "value": "RHL",
+              "note": "rhumb line as a geodesic string, 6 positions added"
+            }
+          ]
+        },
+        "Gbr/Gbv[codeType=RHL]/geoLat": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/Gbv[codeType=RHL]/geoLong": {
+          "target": "GeoBorder/border/Curve/GeodesicString positions",
+          "rule": "GBV-POS",
+          "outcomes": {
+            "mapped": 1
+          }
+        },
+        "Gbr/codeType": {
+          "target": "GeoBorder/type",
+          "rule": "GBR-TYPE",
+          "outcomes": {
+            "mapped": 3
+          }
+        }
+      }
+    }
+  },
+  "targets": {
+    "Airspace": 21,
+    "GeoBorder": 3
+  },
+  "issues": [
+    {
+      "code": "arc_degenerate",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XZERO;codeType=D)",
+      "message": "boundary vertex 1: arc of zero length (its end is its start): omitted",
+      "count": 1
+    },
+    {
+      "code": "arc_end_snapped",
+      "severity": "info",
+      "kind": "Ase",
+      "key": "Ase(codeId=XARC;codeType=P)",
+      "message": "2 boundary vertices next to arcs replaced by the computed arc ends (up to 0.04 m away): radius and vertices disagree within the arc tolerance",
+      "count": 1
+    },
+    {
+      "code": "arc_end_snapped",
+      "severity": "info",
+      "kind": "Ase",
+      "key": "Ase(codeId=XCCA;codeType=P)",
+      "message": "2 boundary vertices next to arcs replaced by the computed arc ends (up to 0.05 m away): radius and vertices disagree within the arc tolerance",
+      "count": 1
+    },
+    {
+      "code": "arc_radius_mismatch",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XMISR;codeType=D)",
+      "message": "boundary vertex 1: arc ends 9260 m and 9260 m from the centre, radius 11112 m (tolerance 56 m); radius kept",
+      "count": 1
+    },
+    {
+      "code": "border_ambiguous",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XISL;codeType=RAS)",
+      "message": "boundary vertex 1: border Gbr(txtName=EXAMPLE ISLAND) is closed: the shorter way round was taken",
+      "count": 1
+    },
+    {
+      "code": "border_far",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XFAR;codeType=RAS)",
+      "message": "boundary vertex 1: 500 m from border Gbr(txtName=EXAMPLE RIVER) (tolerance 100 m)",
+      "count": 1
+    },
+    {
+      "code": "border_missing",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XMISS;codeType=RAS)",
+      "message": "boundary vertex 1: border Gbr(txtName=EXAMPLE NOWHERE) not in the document: great circle used",
+      "count": 1
+    },
+    {
+      "code": "boundary_duplicate",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XR1;codeType=R)",
+      "message": "2 boundaries (Abd) for one airspace: the first is used",
+      "count": 1
+    },
+    {
+      "code": "code_unknown",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XBAD;codeType=D)",
+      "message": "boundary vertex 3: codeType \"XYZ\" unknown: taken as a great circle (GRC)",
+      "count": 1
+    },
+    {
+      "code": "coordinate_invalid",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XBAD;codeType=D)",
+      "message": "boundary vertex 2: position not usable: vertex dropped",
+      "count": 1
+    },
+    {
+      "code": "dangling_ref",
+      "severity": "warning",
+      "kind": "Abd",
+      "key": "Ase(codeId=XGONE;codeType=D)",
+      "message": "boundary or derivation of an airspace that is not in the document: dropped",
+      "count": 1
+    },
+    {
+      "code": "dangling_ref",
+      "severity": "warning",
+      "kind": "Adg",
+      "key": "Ase(codeId=XGONE;codeType=D)",
+      "message": "boundary or derivation of an airspace that is not in the document: dropped",
+      "count": 1
+    },
+    {
+      "code": "datum_unknown",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XBAD;codeType=D)",
+      "message": "boundary coordinates on unknown datum (U), carried untransformed",
+      "count": 1
+    },
+    {
+      "code": "duplicate_key",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XDUP;codeType=D-OTHER)",
+      "message": "natural key occurs more than once: later occurrences get #2, #3, … (identity depends on document order)",
+      "count": 1
+    },
+    {
+      "code": "geometry_both",
+      "severity": "info",
+      "kind": "Ase",
+      "key": "Ase(codeId=XBOTH;codeType=D)",
+      "message": "airspace has a boundary (Abd) and a derivation (Adg): the boundary is used",
+      "count": 1
+    },
+    {
+      "code": "geometry_degenerate",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XPT;codeType=D-OTHER)",
+      "message": "boundary encloses no area (1 distinct position(s), no area): no horizontal projection, positions kept in a note",
+      "count": 1
+    },
+    {
+      "code": "geometry_invalid",
+      "severity": "error",
+      "kind": "Ase",
+      "key": "Ase(codeId=XCV;codeType=D)",
+      "message": "Abd has both a Circle and vertices: the vertices are not used",
+      "count": 1
+    },
+    {
+      "code": "geometry_missing",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XNONE;codeType=D)",
+      "message": "airspace without a boundary (Abd) or derivation (Adg): no horizontal projection",
+      "count": 1
+    },
+    {
+      "code": "value_invalid",
+      "severity": "warning",
+      "kind": "Ase",
+      "key": "Ase(codeId=XRHL;codeType=D)",
+      "message": "endTime \"25:00\" is not a valid TimeType: kept as a note",
+      "count": 1
+    }
+  ]
+}

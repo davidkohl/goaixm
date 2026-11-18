@@ -1,26 +1,27 @@
 package geo_test
 
 import (
+	"context"
 	"math"
 	"os"
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/geo"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/parse"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/geo"
+	"github.com/davidkohl/goaixm/gml"
 )
 
 // makeSurfacePosList builds a minimal SurfaceType from a space-separated
 // "lat lon lat lon ..." string.
-func makeSurfacePosList(posList string) *features.SurfaceType {
-	return &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
+func makeSurfacePosList(posList string) *aixm.Surface {
+	return &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
 				{
-					Exterior: &gml.AbstractRingPropertyType{
-						LinearRing: &gml.LinearRingType{
-							PosList: &gml.DirectPositionListType{Value: posList},
+					Exterior: &gml.AbstractRingProperty{
+						LinearRing: &gml.LinearRing{
+							PosList: &gml.DirectPositionList{Value: posList},
 						},
 					},
 				},
@@ -32,28 +33,23 @@ func makeSurfacePosList(posList string) *features.SurfaceType {
 // TestAirspaceToGeoJSONBasic verifies that a simple airspace with a LinearRing
 // produces a valid GeoJSON Polygon.
 func TestAirspaceToGeoJSONBasic(t *testing.T) {
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	seq := uint32(1)
 	zero := uint32(0)
-	ts := features.AirspaceTimeSliceType{
-		Interpretation: "BASELINE",
-		SequenceNumber: &seq,
-		CorrectionNumber: &zero,
+	ts := aixm.AirspaceTimeSlice{
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &zero},
 	}
 	// Build a simple square geometry: lat lon pairs.
 	surf := makeSurfacePosList("51.0 -1.0 51.0 0.0 52.0 0.0 52.0 -1.0 51.0 -1.0")
-	ts.GeometryComponent = []features.AirspaceGeometryComponentPropertyType{
+	ts.GeometryComponent = []aixm.AirspaceGeometryComponent{
 		{
-			AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-				TheAirspaceVolume: features.AirspaceVolumePropertyType{
-					AirspaceVolume: &features.AirspaceVolumeType{
-						HorizontalProjection: features.HorizontalProjectionType{Surface: surf},
-					},
-				},
+
+			TheAirspaceVolume: &aixm.AirspaceVolume{
+				HorizontalProjection: &aixm.SurfaceProperty{Surface: surf},
 			},
 		},
 	}
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{AirspaceTimeSlice: ts}}
+	a.TimeSlice = []aixm.AirspaceTimeSlice{ts}
 
 	fc, err := geo.AirspaceToGeoJSON(a)
 	if err != nil {
@@ -62,9 +58,9 @@ func TestAirspaceToGeoJSONBasic(t *testing.T) {
 	if len(fc.Features) != 1 {
 		t.Fatalf("expected 1 feature, got %d", len(fc.Features))
 	}
-	poly, ok := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
+	poly, ok := fc.Features[0].Geometry.(geo.Polygon)
 	if !ok {
-		t.Fatalf("geometry is %T, want GeoJSONPolygon", fc.Features[0].Geometry)
+		t.Fatalf("geometry is %T, want Polygon", fc.Features[0].Geometry)
 	}
 	if len(poly.Coordinates) != 1 {
 		t.Errorf("expected 1 ring (exterior only), got %d", len(poly.Coordinates))
@@ -81,24 +77,24 @@ func TestAirspaceToGeoJSONBasic(t *testing.T) {
 // TestAirspaceToGeoJSONWithHole verifies that interior rings (holes) are
 // included as additional coordinate rings in the GeoJSON Polygon.
 func TestAirspaceToGeoJSONWithHole(t *testing.T) {
-	exterior := &gml.AbstractRingPropertyType{
-		LinearRing: &gml.LinearRingType{
-			PosList: &gml.DirectPositionListType{
+	exterior := &gml.AbstractRingProperty{
+		LinearRing: &gml.LinearRing{
+			PosList: &gml.DirectPositionList{
 				Value: "51.0 -1.0 51.0 1.0 53.0 1.0 53.0 -1.0 51.0 -1.0",
 			},
 		},
 	}
-	hole := gml.AbstractRingPropertyType{
-		LinearRing: &gml.LinearRingType{
-			PosList: &gml.DirectPositionListType{
+	hole := gml.AbstractRingProperty{
+		LinearRing: &gml.LinearRing{
+			PosList: &gml.DirectPositionList{
 				Value: "51.5 -0.5 51.5 0.5 52.5 0.5 52.5 -0.5 51.5 -0.5",
 			},
 		},
 	}
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
-				{Exterior: exterior, Interior: []gml.AbstractRingPropertyType{hole}},
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
+				{Exterior: exterior, Interior: []gml.AbstractRingProperty{hole}},
 			},
 		},
 	}
@@ -108,7 +104,7 @@ func TestAirspaceToGeoJSONWithHole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AirspaceToGeoJSON: %v", err)
 	}
-	poly := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
+	poly := fc.Features[0].Geometry.(geo.Polygon)
 	if len(poly.Coordinates) != 2 {
 		t.Errorf("expected 2 rings (exterior + 1 hole), got %d", len(poly.Coordinates))
 	}
@@ -117,7 +113,7 @@ func TestAirspaceToGeoJSONWithHole(t *testing.T) {
 // TestAirspaceToGeoJSONNoTimeslice verifies an error is returned for features
 // with no timeslice.
 func TestAirspaceToGeoJSONNoTimeslice(t *testing.T) {
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	_, err := geo.AirspaceToGeoJSON(a)
 	if err == nil {
 		t.Fatal("expected error for airspace with no timeslices")
@@ -132,23 +128,32 @@ func TestAirspaceToGeoJSONDonlon(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	defer f.Close()
-	msg, err := parse.ParseMessage(f)
+	msg, err := goaixm.Parse(context.Background(), f, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseMessage: %v", err)
 	}
 
-	ok, skipped := 0, 0
-	for _, a := range msg.Airspaces() {
-		_, err := geo.AirspaceToGeoJSON(a)
-		if err != nil {
-			skipped++
-		} else {
-			ok++
+	// 17 DONLON airspaces convert from the feature alone.  Two borrow a
+	// boundary from a GeoBorder and one (EAMM) is assembled from contributor
+	// airspaces; both are held elsewhere in the message, which only
+	// AirspaceToGeoJSONWithRefs can resolve.  Exact counts keep a regression
+	// from hiding.
+	const wantAlone, wantWithRefs = 17, 20
+
+	alone, withRefs := 0, 0
+	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
+		if _, err := geo.AirspaceToGeoJSON(a); err == nil {
+			alone++
+		}
+		if _, err := geo.AirspaceToGeoJSONWithRefs(a, msg); err == nil {
+			withRefs++
 		}
 	}
-	t.Logf("DONLON airspaces: %d with geometry, %d without/error", ok, skipped)
-	if ok == 0 {
-		t.Error("expected at least one airspace to produce GeoJSON")
+	if alone != wantAlone {
+		t.Errorf("DONLON airspaces converting without a message = %d, want %d", alone, wantAlone)
+	}
+	if withRefs != wantWithRefs {
+		t.Errorf("DONLON airspaces converting with the message = %d, want %d", withRefs, wantWithRefs)
 	}
 }
 
@@ -157,23 +162,23 @@ func TestAirspaceToGeoJSONDonlon(t *testing.T) {
 func TestDiscretizeArc(t *testing.T) {
 	// Three points on the unit circle at 0°, 90°, 180° (in lon/lat order).
 	// Circumcenter is (0,0), radius 1.
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
 				{
-					Exterior: &gml.AbstractRingPropertyType{
-						Ring: &gml.RingType{
-							CurveMember: []gml.CurveMemberType{
+					Exterior: &gml.AbstractRingProperty{
+						Ring: &gml.Ring{
+							CurveMember: []gml.CurveMember{
 								{
-									Curve: &gml.CurveType{
-										Segments: &gml.CurveSegmentsType{
-											Arc: []gml.ArcType{
+									Curve: &gml.Curve{
+										Segments: &gml.CurveSegments{
+											Arc: []gml.Arc{
 												{
 													// GML pos = lat lon
-													Pos: []gml.DirectPositionType{
-														{Value: "0.0 1.0"},   // lat=0, lon=1 → point (1,0)
-														{Value: "1.0 0.0"},   // lat=1, lon=0 → point (0,1)
-														{Value: "0.0 -1.0"},  // lat=0, lon=-1 → point (-1,0)
+													Pos: []gml.DirectPosition{
+														{Value: "0.0 1.0"},  // lat=0, lon=1 → point (1,0)
+														{Value: "1.0 0.0"},  // lat=1, lon=0 → point (0,1)
+														{Value: "0.0 -1.0"}, // lat=0, lon=-1 → point (-1,0)
 													},
 												},
 											},
@@ -193,21 +198,32 @@ func TestDiscretizeArc(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AirspaceToGeoJSON with arc: %v", err)
 	}
-	poly := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
+	poly := fc.Features[0].Geometry.(geo.Polygon)
 	coords := poly.Coordinates[0]
 
-	// DefaultArcPoints=64 → 65 points.
-	if len(coords) != geo.DefaultArcPoints+1 {
-		t.Errorf("arc: expected %d points, got %d", geo.DefaultArcPoints+1, len(coords))
+	// A 180-degree sweep uses half of DefaultArcPoints, and the ring is then
+	// closed back on its first position as RFC 7946 requires.
+	wantArc := geo.DefaultArcPoints/2 + 1
+	if len(coords) != wantArc+1 {
+		t.Errorf("arc: expected %d points (%d arc + closing), got %d",
+			wantArc+1, wantArc, len(coords))
 	}
 
-	// First point should be lon=1, lat=0.
-	if !approxEqual(coords[0][0], 1.0, 1e-9) || !approxEqual(coords[0][1], 0.0, 1e-9) {
-		t.Errorf("arc first point = %v, want [1,0]", coords[0])
+	// The ring must be closed.
+	if coords[0] != coords[len(coords)-1] {
+		t.Errorf("arc ring not closed: first %v, last %v", coords[0], coords[len(coords)-1])
 	}
-	// Last point should be lon=-1, lat=0.
-	if !approxEqual(coords[len(coords)-1][0], -1.0, 1e-9) || !approxEqual(coords[len(coords)-1][1], 0.0, 1e-9) {
-		t.Errorf("arc last point = %v, want [-1,0]", coords[len(coords)-1])
+
+	// The two arc endpoints are (1,0) and (-1,0); orientation decides which
+	// comes first, so accept either order.
+	first, last := coords[0], coords[len(coords)-2]
+	okForward := approxEqual(first[0], 1.0, 1e-6) && approxEqual(last[0], -1.0, 1e-6)
+	okReverse := approxEqual(first[0], -1.0, 1e-6) && approxEqual(last[0], 1.0, 1e-6)
+	if !okForward && !okReverse {
+		t.Errorf("arc endpoints = %v .. %v, want (1,0) and (-1,0) in some order", first, last)
+	}
+	if !approxEqual(first[1], 0.0, 1e-6) || !approxEqual(last[1], 0.0, 1e-6) {
+		t.Errorf("arc endpoints not on the equator: %v .. %v", first, last)
 	}
 }
 
@@ -216,26 +232,21 @@ func approxEqual(a, b, tol float64) bool {
 }
 
 // buildAirspaceWithSurface is a test helper.
-func buildAirspaceWithSurface(surf *features.SurfaceType) *features.AirspaceType {
-	a := &features.AirspaceType{}
+func buildAirspaceWithSurface(surf *aixm.Surface) *aixm.Airspace {
+	a := &aixm.Airspace{}
 	seq := uint32(1)
 	zero := uint32(0)
-	ts := features.AirspaceTimeSliceType{
-		Interpretation:   "BASELINE",
-		SequenceNumber:   &seq,
-		CorrectionNumber: &zero,
+	ts := aixm.AirspaceTimeSlice{
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &zero},
 	}
-	ts.GeometryComponent = []features.AirspaceGeometryComponentPropertyType{
+	ts.GeometryComponent = []aixm.AirspaceGeometryComponent{
 		{
-			AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-				TheAirspaceVolume: features.AirspaceVolumePropertyType{
-					AirspaceVolume: &features.AirspaceVolumeType{
-						HorizontalProjection: features.HorizontalProjectionType{Surface: surf},
-					},
-				},
+
+			TheAirspaceVolume: &aixm.AirspaceVolume{
+				HorizontalProjection: &aixm.SurfaceProperty{Surface: surf},
 			},
 		},
 	}
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{AirspaceTimeSlice: ts}}
+	a.TimeSlice = []aixm.AirspaceTimeSlice{ts}
 	return a
 }

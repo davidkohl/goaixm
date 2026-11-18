@@ -1,15 +1,15 @@
 package geo_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/geo"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/parse"
-	"gitlab.com/davidkohl/goaixm/types"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/geo"
+	"github.com/davidkohl/goaixm/gml"
 )
 
 // TestMarshalGeoJSON verifies that MarshalGeoJSON produces valid JSON.
@@ -45,8 +45,8 @@ func TestAirspaceToGeoJSONWithRefsInline(t *testing.T) {
 	if len(fc.Features) != 1 {
 		t.Fatalf("expected 1 feature, got %d", len(fc.Features))
 	}
-	if _, ok := fc.Features[0].Geometry.(geo.GeoJSONPolygon); !ok {
-		t.Errorf("expected GeoJSONPolygon, got %T", fc.Features[0].Geometry)
+	if _, ok := fc.Features[0].Geometry.(geo.Polygon); !ok {
+		t.Errorf("expected Polygon, got %T", fc.Features[0].Geometry)
 	}
 }
 
@@ -56,37 +56,31 @@ func TestAirspaceToGeoJSONWithRefsMultiPolygon(t *testing.T) {
 	surf1 := makeSurfacePosList("51.0 -1.0 51.0 0.0 52.0 0.0 51.0 -1.0")
 	surf2 := makeSurfacePosList("53.0 1.0 53.0 2.0 54.0 2.0 53.0 1.0")
 
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	seq, cor := uint32(1), uint32(0)
-	ts := features.AirspaceTimeSliceType{
-		Interpretation:   "BASELINE",
-		SequenceNumber:   &seq,
-		CorrectionNumber: &cor,
-		GeometryComponent: []features.AirspaceGeometryComponentPropertyType{
-			{AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-				TheAirspaceVolume: features.AirspaceVolumePropertyType{
-					AirspaceVolume: &features.AirspaceVolumeType{
-						HorizontalProjection: features.HorizontalProjectionType{Surface: surf1},
-					},
+	ts := aixm.AirspaceTimeSlice{
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &cor},
+		GeometryComponent: []aixm.AirspaceGeometryComponent{
+			{
+				TheAirspaceVolume: &aixm.AirspaceVolume{
+					HorizontalProjection: &aixm.SurfaceProperty{Surface: surf1},
 				},
-			}},
-			{AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-				TheAirspaceVolume: features.AirspaceVolumePropertyType{
-					AirspaceVolume: &features.AirspaceVolumeType{
-						HorizontalProjection: features.HorizontalProjectionType{Surface: surf2},
-					},
+			},
+			{
+				TheAirspaceVolume: &aixm.AirspaceVolume{
+					HorizontalProjection: &aixm.SurfaceProperty{Surface: surf2},
 				},
-			}},
+			},
 		},
 	}
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{AirspaceTimeSlice: ts}}
+	a.TimeSlice = []aixm.AirspaceTimeSlice{ts}
 
 	fc, err := geo.AirspaceToGeoJSONWithRefs(a, nil)
 	if err != nil {
 		t.Fatalf("AirspaceToGeoJSONWithRefs: %v", err)
 	}
-	if _, ok := fc.Features[0].Geometry.(geo.GeoJSONMultiPolygon); !ok {
-		t.Errorf("expected GeoJSONMultiPolygon for 2 components, got %T", fc.Features[0].Geometry)
+	if _, ok := fc.Features[0].Geometry.(geo.MultiPolygon); !ok {
+		t.Errorf("expected MultiPolygon for 2 components, got %T", fc.Features[0].Geometry)
 	}
 }
 
@@ -98,7 +92,7 @@ func TestAirspaceToGeoJSONWithRefsResolvesXLink(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	defer f.Close()
-	msg, err := parse.ParseMessage(f)
+	msg, err := goaixm.Parse(context.Background(), f, goaixm.Options{})
 	if err != nil {
 		t.Fatalf("ParseMessage: %v", err)
 	}
@@ -106,7 +100,7 @@ func TestAirspaceToGeoJSONWithRefsResolvesXLink(t *testing.T) {
 	// Run WithRefs on every airspace — should never panic, should produce
 	// at least as many results as AirspaceToGeoJSON.
 	withRefsOK := 0
-	for _, a := range msg.Airspaces() {
+	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
 		fc, err := geo.AirspaceToGeoJSONWithRefs(a, msg)
 		if err == nil {
 			withRefsOK++
@@ -122,19 +116,19 @@ func TestAirspaceToGeoJSONWithRefsResolvesXLink(t *testing.T) {
 // with DefaultArcPoints+1 coordinates.
 func TestDiscretizeCircle(t *testing.T) {
 	// Three points on the unit circle at 0°, 120°, 240°.
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
 				{
-					Exterior: &gml.AbstractRingPropertyType{
-						Ring: &gml.RingType{
-							CurveMember: []gml.CurveMemberType{
+					Exterior: &gml.AbstractRingProperty{
+						Ring: &gml.Ring{
+							CurveMember: []gml.CurveMember{
 								{
-									Curve: &gml.CurveType{
-										Segments: &gml.CurveSegmentsType{
-											Circle: []gml.CircleType{
+									Curve: &gml.Curve{
+										Segments: &gml.CurveSegments{
+											Circle: []gml.Circle{
 												{
-													Pos: []gml.DirectPositionType{
+													Pos: []gml.DirectPosition{
 														{Value: "0.0 1.0"},
 														{Value: "0.866 -0.5"},
 														{Value: "-0.866 -0.5"},
@@ -157,7 +151,7 @@ func TestDiscretizeCircle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AirspaceToGeoJSON with circle: %v", err)
 	}
-	poly := fc.Features[0].Geometry.(geo.GeoJSONPolygon)
+	poly := fc.Features[0].Geometry.(geo.Polygon)
 	coords := poly.Coordinates[0]
 	if len(coords) != geo.DefaultArcPoints+1 {
 		t.Errorf("circle: expected %d points, got %d", geo.DefaultArcPoints+1, len(coords))
@@ -173,20 +167,20 @@ func TestExtractLinearRingPosList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("posList: %v", err)
 	}
-	if len(fc.Features[0].Geometry.(geo.GeoJSONPolygon).Coordinates[0]) != 4 {
+	if len(fc.Features[0].Geometry.(geo.Polygon).Coordinates[0]) != 4 {
 		t.Errorf("expected 4 coords")
 	}
 }
 
 // TestExtractLinearRingPos verifies the individual pos element path.
 func TestExtractLinearRingPos(t *testing.T) {
-	surf := &features.SurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
+	surf := &aixm.Surface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
 				{
-					Exterior: &gml.AbstractRingPropertyType{
-						LinearRing: &gml.LinearRingType{
-							Pos: []gml.DirectPositionType{
+					Exterior: &gml.AbstractRingProperty{
+						LinearRing: &gml.LinearRing{
+							Pos: []gml.DirectPosition{
 								{Value: "51.0 0.0"},
 								{Value: "52.0 0.0"},
 								{Value: "52.0 1.0"},
@@ -203,7 +197,7 @@ func TestExtractLinearRingPos(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pos slice: %v", err)
 	}
-	coords := fc.Features[0].Geometry.(geo.GeoJSONPolygon).Coordinates[0]
+	coords := fc.Features[0].Geometry.(geo.Polygon).Coordinates[0]
 	if len(coords) != 4 {
 		t.Errorf("expected 4 coords, got %d", len(coords))
 	}
@@ -217,27 +211,23 @@ func TestExtractLinearRingPos(t *testing.T) {
 // in GeoJSON properties when present on the AirspaceVolume.
 func TestVerticalLimitsInProperties(t *testing.T) {
 	surf := makeSurfacePosList("51.0 -1.0 51.0 0.0 52.0 0.0 51.0 -1.0")
-	upper := &features.AirspaceVolumeType{
-		HorizontalProjection: features.HorizontalProjectionType{Surface: surf},
-		UpperLimit:           &types.ValDistanceVerticalType{Value: "FL245"},
-		LowerLimit:           &types.ValDistanceVerticalType{Value: "FL65"},
+	upper := &aixm.AirspaceVolume{
+		HorizontalProjection: &aixm.SurfaceProperty{Surface: surf},
+		UpperLimit:           &aixm.ValDistanceVertical{Value: "FL245"},
+		LowerLimit:           &aixm.ValDistanceVertical{Value: "FL65"},
 	}
 
-	a := &features.AirspaceType{}
+	a := &aixm.Airspace{}
 	seq, cor := uint32(1), uint32(0)
-	ts := features.AirspaceTimeSliceType{
-		Interpretation:   "BASELINE",
-		SequenceNumber:   &seq,
-		CorrectionNumber: &cor,
-		GeometryComponent: []features.AirspaceGeometryComponentPropertyType{
-			{AirspaceGeometryComponent: &features.AirspaceGeometryComponentType{
-				TheAirspaceVolume: features.AirspaceVolumePropertyType{
-					AirspaceVolume: upper,
-				},
-			}},
+	ts := aixm.AirspaceTimeSlice{
+		TimeSliceCommon: aixm.TimeSliceCommon{Interpretation: "BASELINE", SequenceNumber: &seq, CorrectionNumber: &cor},
+		GeometryComponent: []aixm.AirspaceGeometryComponent{
+			{
+				TheAirspaceVolume: upper,
+			},
 		},
 	}
-	a.TimeSlice = []features.AirspaceTimeSlicePropertyType{{AirspaceTimeSlice: ts}}
+	a.TimeSlice = []aixm.AirspaceTimeSlice{ts}
 
 	fc, err := geo.AirspaceToGeoJSON(a)
 	if err != nil {

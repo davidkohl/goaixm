@@ -43,7 +43,11 @@
           <aixm:interpretation>BASELINE</aixm:interpretation>
           <aixm:sequenceNumber>1</aixm:sequenceNumber>
           <aixm:correctionNumber>0</aixm:correctionNumber>
-          <aixm:start xlink:href="urn:uuid:dp-alpha-0000-0000-0000-000000000001"/>
+          <aixm:start>
+            <aixm:EnRouteSegmentPoint gml:id="RS-001-START">
+              <aixm:pointChoice_fixDesignatedPoint xlink:href="urn:uuid:dp-alpha-0000-0000-0000-000000000001"/>
+            </aixm:EnRouteSegmentPoint>
+          </aixm:start>
           <aixm:end xlink:href="urn:uuid:dp-alpha-0000-0000-0000-000000000001"/>
         </aixm:RouteSegmentTimeSlice>
       </aixm:timeSlice>

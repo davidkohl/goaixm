@@ -3,173 +3,414 @@ package geo
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"sort"
 	"strconv"
 	"strings"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/gml"
-	"gitlab.com/davidkohl/goaixm/parse"
+	"github.com/davidkohl/goaixm"
+	"github.com/davidkohl/goaixm/aixm"
 )
 
 // DefaultArcPoints is the number of interpolated points used to approximate a
-// circular arc or full circle when converting to a polygon.  Callers that need
-// finer or coarser resolution should call SetArcPoints.
+// full 360-degree circle.  Arcs spanning less than a full turn use
+// proportionally fewer points, down to a floor of arcMinPoints.  Options
+// with an ArcTolerance replace it by a maximum chord error.
 var DefaultArcPoints = 64
 
-// GeoJSONFeature is a GeoJSON Feature object.
-type GeoJSONFeature struct {
+// arcMinPoints is the fewest points used for an arc of any sweep, so that very
+// short arcs still read as curves rather than as single chords.
+const arcMinPoints = 8
+
+// joinTolerance is the angular distance, in degrees, within which two
+// positions are treated as the same point when joining curve segments.  It
+// corresponds to roughly a tenth of a millimetre on the ground.
+//
+// Segment endpoints computed geodesically will not be bit-identical to the
+// hand-written coordinates that follow them in the source data, so an exact
+// comparison would leave a duplicate vertex at every join.
+const joinTolerance = 1e-9
+
+// maxContributorDepth bounds the recursion when an airspace aggregates the
+// geometry of other airspaces, which may themselves aggregate further.
+const maxContributorDepth = 8
+
+// Feature is a GeoJSON Feature object.
+type Feature struct {
 	Type       string         `json:"type"`
 	Properties map[string]any `json:"properties"`
 	Geometry   any            `json:"geometry"`
 }
 
-// GeoJSONPolygon is a GeoJSON Polygon geometry (exterior + optional holes).
-type GeoJSONPolygon struct {
-	Type        string          `json:"type"`
-	Coordinates [][][2]float64  `json:"coordinates"`
+// Polygon is a GeoJSON Polygon geometry (exterior + optional holes).
+type Polygon struct {
+	Type        string         `json:"type"`
+	Coordinates [][][2]float64 `json:"coordinates"`
 }
 
-// GeoJSONMultiPolygon is a GeoJSON MultiPolygon geometry.
-type GeoJSONMultiPolygon struct {
-	Type        string            `json:"type"`
-	Coordinates [][][][2]float64  `json:"coordinates"`
+// MultiPolygon is a GeoJSON MultiPolygon geometry.
+type MultiPolygon struct {
+	Type        string           `json:"type"`
+	Coordinates [][][][2]float64 `json:"coordinates"`
 }
 
-// GeoJSONFeatureCollection is a GeoJSON FeatureCollection.
-type GeoJSONFeatureCollection struct {
-	Type     string           `json:"type"`
-	Features []GeoJSONFeature `json:"features"`
+// LineString is a GeoJSON LineString geometry.
+type LineString struct {
+	Type        string       `json:"type"`
+	Coordinates [][2]float64 `json:"coordinates"`
 }
+
+// FeatureCollection is a GeoJSON FeatureCollection.
+type FeatureCollection struct {
+	Type     string    `json:"type"`
+	Features []Feature `json:"features"`
+}
+
+// centreResolver resolves an xlink:href to a latitude and longitude.  It is
+// used for arc centres given as a gml:pointProperty reference rather than
+// inline coordinates.
+type centreResolver func(href string) (lat, lon float64, ok bool)
+
+// noResolver resolves nothing; it is used when no message is available.
+func noResolver(string) (float64, float64, bool) { return 0, 0, false }
 
 // AirspaceToGeoJSON converts an AirspaceType to a GeoJSON FeatureCollection,
 // one Feature per geometry component.  Each polygon includes interior rings
 // (holes) when present.
-func AirspaceToGeoJSON(a *features.AirspaceType) (*GeoJSONFeatureCollection, error) {
+//
+// Geometry that refers to other features — an aggregated sub-airspace, a
+// referenced GeoBorder, or an arc centre held in a separate Point — cannot be
+// resolved without the surrounding message; use AirspaceToGeoJSONWithRefs for
+// those.
+func AirspaceToGeoJSON(a *aixm.Airspace) (*FeatureCollection, error) {
+	return airspaceToGeoJSON(a, nil, false, Options{})
+}
+
+// AirspaceToGeoJSONWithRefs converts an airspace to GeoJSON, resolving
+// references against msg: sub-airspaces contributed via contributorAirspace,
+// GeoBorder curves referenced from a curveMember, and arc centres given by
+// reference.  When more than one polygon results the geometry is a
+// MultiPolygon.
+func AirspaceToGeoJSONWithRefs(a *aixm.Airspace, msg *goaixm.Message) (*FeatureCollection, error) {
+	return airspaceToGeoJSON(a, msg, true, Options{})
+}
+
+// airspaceToGeoJSON converts an airspace.  When merge is set, every polygon is
+// gathered into a single feature — a MultiPolygon if there is more than one —
+// which is how the reference-resolving form assembles an airspace from its
+// contributing parts.  Otherwise each volume yields its own feature, carrying
+// that volume's vertical limits.
+func airspaceToGeoJSON(a *aixm.Airspace, msg *goaixm.Message, merge bool, o Options) (*FeatureCollection, error) {
+	if a == nil {
+		return nil, fmt.Errorf("geojson: nil airspace")
+	}
 	if len(a.TimeSlice) == 0 {
 		return nil, fmt.Errorf("geojson: airspace has no timeslices")
 	}
-	ts := a.TimeSlice[0].AirspaceTimeSlice
-
+	ts := a.TimeSlice[0]
 	props := airspaceProps(a, ts)
-	fc := &GeoJSONFeatureCollection{Type: "FeatureCollection"}
+	cv := o.conv(msg)
 
-	for _, gc := range ts.GeometryComponent {
-		agc := gc.AirspaceGeometryComponent
-		if agc == nil {
-			continue
+	components := orderedComponents(ts.GeometryComponent)
+
+	var (
+		polygons [][][][2]float64
+		lines    []Feature
+		firstErr error
+		// volumes records the volume each polygon came from, so that a
+		// single-volume airspace can report that volume's vertical limits.
+		volumes []*aixm.AirspaceVolume
+	)
+
+	for i := range components {
+		agc := &components[i]
+		if op := codeValue(agc.Operation); op == aixm.AggregationIntersection ||
+			op == aixm.AggregationSubtraction {
+			return nil, fmt.Errorf(
+				"geojson: airspace %s uses unsupported aggregation operation %s",
+				a.UUID(), op)
 		}
-		vol := agc.TheAirspaceVolume.AirspaceVolume
+
+		vol := agc.TheAirspaceVolume
 		if vol == nil {
 			continue
 		}
-		surf := vol.HorizontalProjection.Surface
-		if surf == nil {
-			continue
-		}
 
-		rings, err := extractAllRings(surf)
+		cv.ringBase = ringBase(ts.GeometryComponent, vol)
+		geom, err := volumeGeometry(vol, cv, msg, 0, nil)
 		if err != nil {
-			return nil, err
-		}
-
-		feat := GeoJSONFeature{
-			Type:       "Feature",
-			Properties: enrichWithLimits(props, vol),
-			Geometry: GeoJSONPolygon{
-				Type:        "Polygon",
-				Coordinates: rings,
-			},
-		}
-		fc.Features = append(fc.Features, feat)
-	}
-
-	if len(fc.Features) == 0 {
-		return nil, fmt.Errorf("geojson: no geometry found for airspace %s", a.GetIdentifier())
-	}
-	return fc, nil
-}
-
-// AirspaceToGeoJSONWithRefs converts an airspace to GeoJSON, resolving any
-// FULL_GEOMETRY xlink:href references to sub-airspaces from msg.
-// When referenced geometry is found the output geometry is a MultiPolygon.
-func AirspaceToGeoJSONWithRefs(a *features.AirspaceType, msg *parse.Message) (*GeoJSONFeatureCollection, error) {
-	if len(a.TimeSlice) == 0 {
-		return nil, fmt.Errorf("geojson: airspace has no timeslices")
-	}
-	ts := a.TimeSlice[0].AirspaceTimeSlice
-	props := airspaceProps(a, ts)
-
-	// Collect all rings from all geometry components (inline + resolved xlinks).
-	// Each entry is one polygon: [exterior, hole0, hole1, ...]
-	var allPolygons [][][][2]float64
-
-	for _, gc := range ts.GeometryComponent {
-		agc := gc.AirspaceGeometryComponent
-		if agc == nil {
-			// Try to resolve via href.
-			if gc.HrefAttr != "" && msg != nil {
-				resolved, ok := msg.Resolve(gc.HrefAttr)
-				if ok {
-					if sub, ok := resolved.(*features.AirspaceType); ok {
-						subFC, err := AirspaceToGeoJSON(sub)
-						if err == nil {
-							for _, f := range subFC.Features {
-								if poly, ok := f.Geometry.(GeoJSONPolygon); ok {
-									allPolygons = append(allPolygons, poly.Coordinates)
-								}
-							}
-						}
-					}
-				}
+			if firstErr == nil {
+				firstErr = err
 			}
 			continue
 		}
-		vol := agc.TheAirspaceVolume.AirspaceVolume
-		if vol == nil {
-			continue
+
+		switch g := geom.(type) {
+		case nil:
+			// No geometry on this component.
+		case Polygon:
+			polygons = append(polygons, g.Coordinates)
+			volumes = append(volumes, vol)
+		case MultiPolygon:
+			for range g.Coordinates {
+				volumes = append(volumes, vol)
+			}
+			polygons = append(polygons, g.Coordinates...)
+		case LineString:
+			lines = append(lines, Feature{
+				Type:       "Feature",
+				Properties: enrichWithLimits(props, vol),
+				Geometry:   g,
+			})
 		}
-		surf := vol.HorizontalProjection.Surface
-		if surf == nil {
-			continue
+	}
+
+	fc := &FeatureCollection{Type: "FeatureCollection"}
+
+	switch {
+	case len(polygons) == 0:
+		// nothing
+	case len(polygons) == 1:
+		fc.Features = append(fc.Features, Feature{
+			Type:       "Feature",
+			Properties: volumeProps(props, volumes[0]),
+			Geometry:   Polygon{Type: "Polygon", Coordinates: polygons[0]},
+		})
+	case merge || sameVolume(volumes):
+		// Either the caller asked for the airspace to be assembled as a whole,
+		// or one volume contributed several polygons.  Both give a single
+		// feature whose geometry is a MultiPolygon.
+		// Vertical limits are only meaningful when every polygon shares a
+		// volume; a merged geometry spanning several volumes has none.
+		mergedProps := props
+		if sameVolume(volumes) {
+			mergedProps = volumeProps(props, volumes[0])
 		}
-		rings, err := extractAllRings(surf)
+		fc.Features = append(fc.Features, Feature{
+			Type:       "Feature",
+			Properties: mergedProps,
+			Geometry:   MultiPolygon{Type: "MultiPolygon", Coordinates: polygons},
+		})
+	default:
+		// Distinct volumes, each with its own vertical limits.
+		for i, poly := range polygons {
+			fc.Features = append(fc.Features, Feature{
+				Type:       "Feature",
+				Properties: volumeProps(props, volumes[i]),
+				Geometry:   Polygon{Type: "Polygon", Coordinates: poly},
+			})
+		}
+	}
+	fc.Features = append(fc.Features, lines...)
+
+	if len(fc.Features) == 0 {
+		if firstErr != nil {
+			return nil, firstErr
+		}
+		return nil, fmt.Errorf("geojson: no geometry found for airspace %s", a.UUID())
+	}
+	return fc, nil
+}
+
+// MarshalGeoJSON marshals a FeatureCollection to indented JSON.
+func MarshalGeoJSON(fc *FeatureCollection) ([]byte, error) {
+	return json.MarshalIndent(fc, "", "  ")
+}
+
+// ---- Volume geometry --------------------------------------------------------
+
+// volumeGeometry converts one airspace volume to a GeoJSON geometry.  It
+// returns a nil geometry, and no error, when the volume carries no geometry of
+// its own and contributes none by reference.
+func volumeGeometry(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message, depth int, warn func(string)) (any, error) {
+	if patches := vol.HorizontalProjection.Patches(); patches != nil {
+		rings, err := extractAllRings(patches, cv, msg, warn)
 		if err != nil {
 			return nil, err
 		}
-		allPolygons = append(allPolygons, rings)
+		return Polygon{Type: "Polygon", Coordinates: rings}, nil
 	}
 
-	if len(allPolygons) == 0 {
-		return nil, fmt.Errorf("geojson: no geometry found for airspace %s", a.GetIdentifier())
+	// A corridor: a centreline with a width.  The centreline is emitted as a
+	// LineString; see the package documentation on why it is not buffered.
+	if segs := vol.Centreline.Segments(); segs != nil {
+		coords, err := segmentsToCoords(segs, cv, msg)
+		if err != nil {
+			return nil, err
+		}
+		return LineString{Type: "LineString", Coordinates: coords}, nil
 	}
 
-	fc := &GeoJSONFeatureCollection{Type: "FeatureCollection"}
-	if len(allPolygons) == 1 {
-		fc.Features = append(fc.Features, GeoJSONFeature{
-			Type:       "Feature",
-			Properties: props,
-			Geometry:   GeoJSONPolygon{Type: "Polygon", Coordinates: allPolygons[0]},
+	if vol.ContributorAirspace != nil {
+		polys, err := resolveContributors(vol, cv, msg, depth)
+		if err != nil {
+			return nil, err
+		}
+		switch len(polys) {
+		case 0:
+			return nil, nil
+		case 1:
+			return Polygon{Type: "Polygon", Coordinates: polys[0]}, nil
+		default:
+			return MultiPolygon{Type: "MultiPolygon", Coordinates: polys}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// resolveContributors returns the polygons contributed to vol by the airspace
+// its contributorAirspace dependency names.
+func resolveContributors(vol *aixm.AirspaceVolume, cv *conv, msg *goaixm.Message, depth int) ([][][][2]float64, error) {
+	if depth >= maxContributorDepth {
+		return nil, fmt.Errorf("geojson: contributor airspace nesting exceeds %d levels", maxContributorDepth)
+	}
+	dep := vol.ContributorAirspace
+	if dep == nil || dep.TheAirspace == nil {
+		return nil, nil
+	}
+
+	// FULL_GEOMETRY and HORZ_PROJECTION both contribute the horizontal
+	// geometry; they differ only in vertical treatment, which a 2-D GeoJSON
+	// projection does not represent.
+	if d := codeValue(dep.Dependency); d != "" &&
+		d != aixm.DependencyFullGeometry && d != aixm.DependencyHorzProjection {
+		return nil, nil
+	}
+
+	if msg == nil || dep.TheAirspace.Href == "" {
+		return nil, nil
+	}
+	resolved, ok := msg.Resolve(dep.TheAirspace.Href)
+	if !ok {
+		return nil, nil
+	}
+	sub, ok := resolved.(*aixm.Airspace)
+	if !ok {
+		return nil, nil
+	}
+
+	base := cv.ringBase
+	fc, err := airspaceToGeoJSONDepth(cv.refAirspace(sub), cv, msg, depth+1)
+	cv.ringBase = base
+	if err != nil {
+		// A contributor we cannot convert simply contributes nothing; the
+		// airspace may still have geometry from its other components.
+		return nil, nil
+	}
+	return polygonsOf(fc), nil
+}
+
+// airspaceToGeoJSONDepth converts a contributed airspace while tracking the
+// aggregation depth already reached.
+func airspaceToGeoJSONDepth(a *aixm.Airspace, cv *conv, msg *goaixm.Message, depth int) (*FeatureCollection, error) {
+	if len(a.TimeSlice) == 0 {
+		return nil, fmt.Errorf("geojson: airspace has no timeslices")
+	}
+	ts := a.TimeSlice[0]
+
+	var polygons [][][][2]float64
+	for _, agc := range orderedComponents(ts.GeometryComponent) {
+		if agc.TheAirspaceVolume == nil {
+			continue
+		}
+		cv.ringBase = ringBase(ts.GeometryComponent, agc.TheAirspaceVolume)
+		geom, err := volumeGeometry(agc.TheAirspaceVolume, cv, msg, depth, nil)
+		if err != nil {
+			continue
+		}
+		switch g := geom.(type) {
+		case Polygon:
+			polygons = append(polygons, g.Coordinates)
+		case MultiPolygon:
+			polygons = append(polygons, g.Coordinates...)
+		}
+	}
+	if len(polygons) == 0 {
+		return nil, fmt.Errorf("geojson: no geometry found for airspace %s", a.UUID())
+	}
+
+	fc := &FeatureCollection{Type: "FeatureCollection"}
+	props := airspaceProps(a, ts)
+	if len(polygons) == 1 {
+		fc.Features = append(fc.Features, Feature{
+			Type: "Feature", Properties: props,
+			Geometry: Polygon{Type: "Polygon", Coordinates: polygons[0]},
 		})
 	} else {
-		fc.Features = append(fc.Features, GeoJSONFeature{
-			Type:       "Feature",
-			Properties: props,
-			Geometry:   GeoJSONMultiPolygon{Type: "MultiPolygon", Coordinates: allPolygons},
+		fc.Features = append(fc.Features, Feature{
+			Type: "Feature", Properties: props,
+			Geometry: MultiPolygon{Type: "MultiPolygon", Coordinates: polygons},
 		})
 	}
 	return fc, nil
 }
 
-// MarshalGeoJSON marshals a GeoJSONFeatureCollection to indented JSON.
-func MarshalGeoJSON(fc *GeoJSONFeatureCollection) ([]byte, error) {
-	return json.MarshalIndent(fc, "", "  ")
+// ringBase returns the number of source rings (each polygon patch's
+// exterior and interiors) of the volumes before vol, in document order.
+func ringBase(in []aixm.AirspaceGeometryComponent, vol *aixm.AirspaceVolume) int {
+	n := 0
+	for i := range in {
+		v := in[i].TheAirspaceVolume
+		if v == nil {
+			continue
+		}
+		if v == vol {
+			return n
+		}
+		if p := v.HorizontalProjection.Patches(); p != nil {
+			for _, pp := range p.PolygonPatch {
+				n += 1 + len(pp.Interior)
+			}
+		}
+	}
+	return n
 }
 
-// ---- Internal helpers -------------------------------------------------------
+// orderedComponents returns the geometry components sorted by their
+// operationSequence, so that aggregation is applied in the intended order.
+// Components without a sequence keep their document order.
+func orderedComponents(in []aixm.AirspaceGeometryComponent) []aixm.AirspaceGeometryComponent {
+	out := make([]aixm.AirspaceGeometryComponent, len(in))
+	copy(out, in)
+	sort.SliceStable(out, func(i, j int) bool {
+		return componentSequence(out[i]) < componentSequence(out[j])
+	})
+	return out
+}
 
-func airspaceProps(a *features.AirspaceType, ts features.AirspaceTimeSliceType) map[string]any {
-	props := map[string]any{"identifier": a.GetIdentifier()}
+func componentSequence(c aixm.AirspaceGeometryComponent) int {
+	if c.OperationSequence == nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(c.OperationSequence.Value))
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// polygonsOf collects every polygon in a feature collection, flattening any
+// MultiPolygon.
+func polygonsOf(fc *FeatureCollection) [][][][2]float64 {
+	var out [][][][2]float64
+	if fc == nil {
+		return nil
+	}
+	for _, f := range fc.Features {
+		switch g := f.Geometry.(type) {
+		case Polygon:
+			out = append(out, g.Coordinates)
+		case MultiPolygon:
+			out = append(out, g.Coordinates...)
+		}
+	}
+	return out
+}
+
+// ---- Properties -------------------------------------------------------------
+
+func airspaceProps(a *aixm.Airspace, ts aixm.AirspaceTimeSlice) map[string]any {
+	props := map[string]any{"identifier": a.UUID()}
 	if ts.Designator != nil {
 		props["designator"] = ts.Designator.Value
 	}
@@ -183,8 +424,27 @@ func airspaceProps(a *features.AirspaceType, ts features.AirspaceTimeSliceType) 
 	return props
 }
 
-func enrichWithLimits(base map[string]any, vol *features.AirspaceVolumeType) map[string]any {
-	out := make(map[string]any, len(base)+4)
+// volumeProps returns the airspace properties enriched with the vertical
+// limits of vol, or the properties unchanged when there is no volume.
+func volumeProps(base map[string]any, vol *aixm.AirspaceVolume) map[string]any {
+	if vol == nil {
+		return base
+	}
+	return enrichWithLimits(base, vol)
+}
+
+// sameVolume reports whether every polygon came from one and the same volume.
+func sameVolume(volumes []*aixm.AirspaceVolume) bool {
+	for _, v := range volumes[1:] {
+		if v != volumes[0] {
+			return false
+		}
+	}
+	return true
+}
+
+func enrichWithLimits(base map[string]any, vol *aixm.AirspaceVolume) map[string]any {
+	out := make(map[string]any, len(base)+6)
 	for k, v := range base {
 		out[k] = v
 	}
@@ -200,297 +460,33 @@ func enrichWithLimits(base map[string]any, vol *features.AirspaceVolumeType) map
 			out["lowerLimitReference"] = vol.LowerLimitReference.Value
 		}
 	}
+	// A corridor is reported with its width so that a consumer can buffer the
+	// centreline itself; see the note on volumeGeometry.
+	if vol.Centreline != nil && vol.Width != nil {
+		out["geometryKind"] = "centreline"
+		if m, err := LengthToMetres(parseFloat(vol.Width.Value), widthUom(vol)); err == nil {
+			out["width_m"] = m
+		}
+	}
 	return out
 }
 
-// extractAllRings returns the exterior ring at index 0 followed by any
-// interior rings (holes) from the first patch of surf.
-func extractAllRings(surf *features.SurfaceType) ([][][2]float64, error) {
-	if surf.Patches == nil || len(surf.Patches.PolygonPatch) == 0 {
-		return nil, fmt.Errorf("geojson: surface has no patches")
+// widthUom reports the unit of measure of a volume's width, assuming metres
+// when the data gives none.
+func widthUom(vol *aixm.AirspaceVolume) string {
+	if vol.Width != nil && vol.Width.UOM != "" {
+		return vol.Width.UOM
 	}
-	patch := surf.Patches.PolygonPatch[0]
-	if patch.Exterior == nil {
-		return nil, fmt.Errorf("geojson: patch has no exterior")
-	}
-	exterior, err := extractAbstractRingCoords(patch.Exterior)
+	return "M"
+}
+
+func parseFloat(s string) float64 {
+	v, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
 	if err != nil {
-		return nil, err
+		return 0
 	}
-	rings := [][][2]float64{exterior}
-	for i := range patch.Interior {
-		hole, err := extractAbstractRingCoords(&patch.Interior[i])
-		if err != nil {
-			return nil, fmt.Errorf("geojson: interior ring %d: %w", i, err)
-		}
-		rings = append(rings, hole)
-	}
-	return rings, nil
+	return v
 }
 
-func extractAbstractRingCoords(r *gml.AbstractRingPropertyType) ([][2]float64, error) {
-	if r.LinearRing != nil {
-		return extractLinearRingCoords(r.LinearRing)
-	}
-	if r.Ring != nil {
-		return extractRingTypeCoords(r.Ring)
-	}
-	return nil, fmt.Errorf("geojson: exterior has neither LinearRing nor Ring")
-}
-
-func extractLinearRingCoords(lr *gml.LinearRingType) ([][2]float64, error) {
-	if lr.PosList != nil {
-		return posListToCoords(lr.PosList.Value)
-	}
-	if len(lr.Pos) > 0 {
-		return posSliceToCoords(lr.Pos)
-	}
-	return nil, fmt.Errorf("geojson: LinearRing has no positions")
-}
-
-func extractRingTypeCoords(ring *gml.RingType) ([][2]float64, error) {
-	var coords [][2]float64
-	for _, cm := range ring.CurveMember {
-		if cm.Curve == nil || cm.Curve.Segments == nil {
-			continue
-		}
-		segs := cm.Curve.Segments
-
-		for _, gs := range segs.GeodesicString {
-			var c [][2]float64
-			var err error
-			if gs.PosList != nil {
-				c, err = posListToCoords(gs.PosList.Value)
-			} else if len(gs.Pos) > 0 {
-				c, err = posSliceToCoords(gs.Pos)
-			}
-			if err != nil {
-				return nil, err
-			}
-			coords = appendDedup(coords, c)
-		}
-
-		for _, ls := range segs.LineStringSegment {
-			if ls.PosList == nil {
-				continue
-			}
-			c, err := posListToCoords(ls.PosList.Value)
-			if err != nil {
-				return nil, err
-			}
-			coords = appendDedup(coords, c)
-		}
-
-		for _, arc := range segs.Arc {
-			c, err := discretizeArc(arc.Pos, arc.PosList, DefaultArcPoints)
-			if err != nil {
-				return nil, err
-			}
-			coords = appendDedup(coords, c)
-		}
-
-		for _, circle := range segs.Circle {
-			c, err := discretizeCircle(circle.Pos, circle.PosList, DefaultArcPoints)
-			if err != nil {
-				return nil, err
-			}
-			coords = appendDedup(coords, c)
-		}
-	}
-	if len(coords) == 0 {
-		return nil, fmt.Errorf("geojson: Ring has no coordinates")
-	}
-	return coords, nil
-}
-
-// appendDedup appends src to dst, skipping the first point of src if it
-// duplicates the last point of dst (avoids repeated join points between segments).
-func appendDedup(dst, src [][2]float64) [][2]float64 {
-	if len(src) == 0 {
-		return dst
-	}
-	if len(dst) > 0 && dst[len(dst)-1] == src[0] {
-		src = src[1:]
-	}
-	return append(dst, src...)
-}
-
-// ---- Arc/Circle discretization ---------------------------------------------
-
-// discretizeArc approximates a three-point circular arc as n line segments.
-// Points are in GML lat-lon order; returned coords are [lon,lat].
-func discretizeArc(pos []gml.DirectPositionType, posList *gml.DirectPositionListType, n int) ([][2]float64, error) {
-	pts, err := arcPoints(pos, posList)
-	if err != nil {
-		return nil, err
-	}
-	if len(pts) != 3 {
-		return nil, fmt.Errorf("geojson: Arc requires exactly 3 points, got %d", len(pts))
-	}
-	lat1, lon1 := pts[0][0], pts[0][1]
-	lat2, lon2 := pts[1][0], pts[1][1]
-	lat3, lon3 := pts[2][0], pts[2][1]
-
-	cx, cy, r := circumcenter(lon1, lat1, lon2, lat2, lon3, lat3)
-
-	a1 := math.Atan2(lat1-cy, lon1-cx)
-	a2 := math.Atan2(lat2-cy, lon2-cx)
-	a3 := math.Atan2(lat3-cy, lon3-cx)
-
-	// Determine direction (clockwise vs counter-clockwise).
-	cross := (lon2-lon1)*(lat3-lat1) - (lat2-lat1)*(lon3-lon1)
-	if cross < 0 {
-		// Clockwise: normalise so a1 > a3.
-		for a3 > a1 {
-			a3 -= 2 * math.Pi
-		}
-		_ = a2
-	} else {
-		for a3 < a1 {
-			a3 += 2 * math.Pi
-		}
-		_ = a2
-	}
-
-	coords := make([][2]float64, n+1)
-	for i := 0; i <= n; i++ {
-		t := float64(i) / float64(n)
-		angle := a1 + t*(a3-a1)
-		lon := cx + r*math.Cos(angle)
-		lat := cy + r*math.Sin(angle)
-		coords[i] = [2]float64{lon, lat}
-	}
-	return coords, nil
-}
-
-// discretizeCircle approximates a full circle (3 points on circumference) as
-// n line segments.
-func discretizeCircle(pos []gml.DirectPositionType, posList *gml.DirectPositionListType, n int) ([][2]float64, error) {
-	pts, err := arcPoints(pos, posList)
-	if err != nil {
-		return nil, err
-	}
-	if len(pts) != 3 {
-		return nil, fmt.Errorf("geojson: Circle requires exactly 3 points, got %d", len(pts))
-	}
-	lat1, lon1 := pts[0][0], pts[0][1]
-	lat2, lon2 := pts[1][0], pts[1][1]
-	lat3, lon3 := pts[2][0], pts[2][1]
-
-	cx, cy, r := circumcenter(lon1, lat1, lon2, lat2, lon3, lat3)
-
-	coords := make([][2]float64, n+1)
-	for i := 0; i <= n; i++ {
-		angle := 2 * math.Pi * float64(i) / float64(n)
-		coords[i] = [2]float64{cx + r*math.Cos(angle), cy + r*math.Sin(angle)}
-	}
-	return coords, nil
-}
-
-// arcPoints extracts lat-lon pairs from pos/posList, returning [][lat,lon].
-func arcPoints(pos []gml.DirectPositionType, posList *gml.DirectPositionListType) ([][2]float64, error) {
-	if posList != nil {
-		return posListToLatLon(posList.Value)
-	}
-	if len(pos) > 0 {
-		return posSliceToLatLon(pos)
-	}
-	return nil, fmt.Errorf("geojson: arc has no positions")
-}
-
-// circumcenter computes the circumcenter (cx,cy) and radius r of the circle
-// passing through (x1,y1), (x2,y2), (x3,y3).
-func circumcenter(x1, y1, x2, y2, x3, y3 float64) (cx, cy, r float64) {
-	ax, ay := x2-x1, y2-y1
-	bx, by := x3-x1, y3-y1
-	D := 2 * (ax*by - ay*bx)
-	if math.Abs(D) < 1e-12 {
-		// Degenerate / collinear points — return midpoint and zero radius.
-		return (x1 + x3) / 2, (y1 + y3) / 2, 0
-	}
-	ux := (by*(ax*ax+ay*ay) - ay*(bx*bx+by*by)) / D
-	uy := (ax*(bx*bx+by*by) - bx*(ax*ax+ay*ay)) / D
-	cx = x1 + ux
-	cy = y1 + uy
-	r = math.Hypot(ux, uy)
-	return
-}
-
-// ---- Coordinate parsing (internal, lat-lon order) --------------------------
-
-// posListToLatLon returns [][lat,lon] (NOT swapped — internal use only).
-func posListToLatLon(s string) ([][2]float64, error) {
-	fields := strings.Fields(s)
-	if len(fields)%2 != 0 {
-		return nil, fmt.Errorf("geojson: posList has odd number of values")
-	}
-	pts := make([][2]float64, 0, len(fields)/2)
-	for i := 0; i+1 < len(fields); i += 2 {
-		lat, err := strconv.ParseFloat(fields[i], 64)
-		if err != nil {
-			return nil, err
-		}
-		lon, err := strconv.ParseFloat(fields[i+1], 64)
-		if err != nil {
-			return nil, err
-		}
-		pts = append(pts, [2]float64{lat, lon})
-	}
-	return pts, nil
-}
-
-func posSliceToLatLon(pos []gml.DirectPositionType) ([][2]float64, error) {
-	pts := make([][2]float64, 0, len(pos))
-	for _, p := range pos {
-		fields := strings.Fields(p.Value)
-		if len(fields) < 2 {
-			return nil, fmt.Errorf("geojson: pos %q has fewer than 2 values", p.Value)
-		}
-		lat, _ := strconv.ParseFloat(fields[0], 64)
-		lon, _ := strconv.ParseFloat(fields[1], 64)
-		pts = append(pts, [2]float64{lat, lon})
-	}
-	return pts, nil
-}
-
-// posListToCoords parses a GML posList (lat lon lat lon ...) into [lon,lat] pairs.
-func posListToCoords(s string) ([][2]float64, error) {
-	fields := strings.Fields(s)
-	if len(fields)%2 != 0 {
-		return nil, fmt.Errorf("geojson: posList has odd number of values")
-	}
-	coords := make([][2]float64, 0, len(fields)/2)
-	for i := 0; i+1 < len(fields); i += 2 {
-		lat, err := strconv.ParseFloat(fields[i], 64)
-		if err != nil {
-			return nil, fmt.Errorf("geojson: invalid lat %q: %w", fields[i], err)
-		}
-		lon, err := strconv.ParseFloat(fields[i+1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("geojson: invalid lon %q: %w", fields[i+1], err)
-		}
-		coords = append(coords, [2]float64{lon, lat})
-	}
-	return coords, nil
-}
-
-// posSliceToCoords converts a slice of DirectPositionType (lat lon) to [lon,lat] pairs.
-func posSliceToCoords(pos []gml.DirectPositionType) ([][2]float64, error) {
-	coords := make([][2]float64, 0, len(pos))
-	for _, p := range pos {
-		fields := strings.Fields(p.Value)
-		if len(fields) < 2 {
-			return nil, fmt.Errorf("geojson: pos %q has fewer than 2 values", p.Value)
-		}
-		lat, err := strconv.ParseFloat(fields[0], 64)
-		if err != nil {
-			return nil, fmt.Errorf("geojson: invalid lat %q: %w", fields[0], err)
-		}
-		lon, err := strconv.ParseFloat(fields[1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("geojson: invalid lon %q: %w", fields[1], err)
-		}
-		coords = append(coords, [2]float64{lon, lat})
-	}
-	return coords, nil
-}
+// codeValue returns the trimmed text of an AIXM code value, or "" when absent.
+func codeValue(v *aixm.Value) string { return v.String() }

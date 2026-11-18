@@ -3,18 +3,18 @@ package geo_test
 import (
 	"testing"
 
-	"gitlab.com/davidkohl/goaixm/features"
-	"gitlab.com/davidkohl/goaixm/geo"
-	"gitlab.com/davidkohl/goaixm/gml"
+	"github.com/davidkohl/goaixm/aixm"
+	"github.com/davidkohl/goaixm/geo"
+	"github.com/davidkohl/goaixm/gml"
 )
 
 func TestFromPoint(t *testing.T) {
-	p := &features.ElevatedPointType{
-		Pos: &gml.DirectPositionType{Value: "51.4775 -0.4614"},
+	p := &aixm.ElevatedPoint{
+		Pos: &gml.DirectPosition{Value: "51.4775 -0.4614"},
 	}
-	c, err := geo.FromPoint(p)
+	c, err := geo.FromElevatedPoint(p)
 	if err != nil {
-		t.Fatalf("FromPoint: %v", err)
+		t.Fatalf("FromElevatedPoint: %v", err)
 	}
 	if c.Lat != 51.4775 || c.Lon != -0.4614 {
 		t.Errorf("got lat=%g lon=%g, want 51.4775 -0.4614", c.Lat, c.Lon)
@@ -22,7 +22,7 @@ func TestFromPoint(t *testing.T) {
 }
 
 func TestFromPointNil(t *testing.T) {
-	_, err := geo.FromPoint(nil)
+	_, err := geo.FromElevatedPoint(nil)
 	if err == nil {
 		t.Error("expected error for nil ElevatedPoint")
 	}
@@ -71,13 +71,13 @@ func TestBoundingBox(t *testing.T) {
 }
 
 func TestFromSurface(t *testing.T) {
-	s := &features.ElevatedSurfaceType{
-		Patches: &gml.SurfacePatchesType{
-			PolygonPatch: []gml.PolygonPatchType{
+	s := &aixm.ElevatedSurface{
+		Patches: &gml.SurfacePatches{
+			PolygonPatch: []gml.PolygonPatch{
 				{
-					Exterior: &gml.AbstractRingPropertyType{
-						LinearRing: &gml.LinearRingType{
-							PosList: &gml.DirectPositionListType{
+					Exterior: &gml.AbstractRingProperty{
+						LinearRing: &gml.LinearRing{
+							PosList: &gml.DirectPositionList{
 								Value: "0 0 1 0 1 1 0 0",
 							},
 						},
@@ -86,9 +86,9 @@ func TestFromSurface(t *testing.T) {
 			},
 		},
 	}
-	coords, err := geo.FromSurface(s)
+	coords, err := geo.FromElevatedSurface(s)
 	if err != nil {
-		t.Fatalf("FromSurface: %v", err)
+		t.Fatalf("FromElevatedSurface: %v", err)
 	}
 	if len(coords) != 4 {
 		t.Errorf("expected 4 coords, got %d", len(coords))

@@ -1,84 +1,204 @@
-// Package goaixm provides a Go library for parsing and working with AIXM 5.1.1 data.
+// Package goaixm parses AIXM 5.1.1 (Aeronautical Information Exchange Model)
+// messages into the Go model of package aixm.
 //
-// # Quick start
+// # Parsing
 //
-//	msg, err := goaixm.ParseFile("data.xml")
-//	if err != nil { log.Fatal(err) }
-//	for _, as := range msg.Airspaces() {
-//	    fmt.Println(as.GetIdentifier())
+//	msg, err := goaixm.ParseFile(ctx, "data.xml", goaixm.Options{})
+//	for _, a := range goaixm.FeaturesOf[*aixm.Airspace](msg) {
+//		fmt.Println(a.UUID(), a.TimeSlice[0].Designator.String())
 //	}
 //
-// # Streaming large messages
+// Parse keeps the whole message and indexes it, so references between
+// features can be followed with Message.Resolve.  Stream visits one member
+// at a time with memory bounded by the largest member:
 //
-//	err := goaixm.StreamFile("big.xml", ctx, func(name string, feat any) error {
-//	    fmt.Println(name)
-//	    return nil
+//	err := goaixm.StreamFile(ctx, "big.xml", goaixm.Options{}, func(m goaixm.Member) error {
+//		fmt.Println(m.Kind, m.Feature.Common().UUID())
+//		return nil
 //	})
 //
-// # Filtering timeslices
+// Both accept AIXMBasicMessage and EUROCONTROL ADRMessage documents of
+// AIXM 5.1.1.
 //
-//	slices := filter.Chain(
-//	    filter.ByInterpretation(features.InterpretationBaseline),
-//	    filter.ByValidTime(time.Now()),
-//	).Apply(as.TimeSlices())
+// # Other AIXM versions
 //
-// # Effective state (baseline + deltas)
+// The version of every document is detected from its root element (package
+// version).  Documents of another AIXM version fail with
+// ErrUnsupportedVersion unless Options.Converters holds a converter path to
+// 5.1.1 (package convert): then they are converted on the fly and decoded
+// like native input, with Member.Provenance and Message.Conversion telling
+// where each member came from.  ParseSource and StreamSource take a
+// re-openable convert.Source, for converters that read their input twice.
 //
-//	state, err := filter.EffectiveAt(as.TimeSlices(), time.Now())
+// # Extending the model
 //
-// # GeoJSON export
+// A Registry decides how each member is decoded.  NewDefaultRegistry knows
+// every AIXM 5.1.1 feature.  Register replaces the type of a feature, Extend
+// adds overlay schemas (partial structs decoded alongside the primary type,
+// see Extension), and Options.Fallback = FallbackGeneric keeps members
+// without a registered type as lossless element trees (GenericFeature).
 //
-//	fc, err := geo.AirspaceToGeoJSON(as)
-//	json, _ := geo.MarshalGeoJSON(fc)
+// Related packages: aixm (the model), geo (geometry and GeoJSON), filter
+// (time slice selection), xmlnode (lossless XML trees) and extensions/adr
+// (EUROCONTROL ADR extensions).
 package goaixm
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
-	"os"
 
-	"gitlab.com/davidkohl/goaixm/parse"
+	"github.com/davidkohl/goaixm/convert"
 )
 
-// ParseMessage decodes an AIXMBasicMessage from r.
-func ParseMessage(r io.Reader) (*parse.Message, error) {
-	return parse.ParseMessage(r)
+// ErrUnknownFeature is reported (wrapped in a Warning) for members whose
+// kind has no registered type when Options.Fallback is FallbackSkip.
+var ErrUnknownFeature = errors.New("goaixm: unknown feature kind")
+
+// ErrTooLarge is returned when a message exceeds Options.MaxBytes.
+var ErrTooLarge = errors.New("goaixm: message exceeds maximum size")
+
+// ErrUnsupportedVersion is returned for a document of another AIXM version
+// than 5.1.1 (see version.Detect) when Options.Converters has no converter
+// path from that version to 5.1.1.  Documents whose root names no AIXM
+// version at all are read as before.
+var ErrUnsupportedVersion = errors.New("goaixm: unsupported AIXM version")
+
+// Fallback controls what happens to members whose kind has no primary type
+// in the registry.
+type Fallback int
+
+const (
+	// FallbackSkip drops such members and records a Warning (the default).
+	FallbackSkip Fallback = iota
+	// FallbackGeneric decodes them into *GenericFeature, a lossless element
+	// tree, so nothing in the message is lost.
+	FallbackGeneric
+)
+
+// Options configures Parse and Stream.  The zero value parses with the
+// default AIXM 5.1.1 registry.
+type Options struct {
+	// Registry decides how members are decoded.  Nil means the AIXM 5.1.1
+	// types (see NewDefaultRegistry).
+	Registry *Registry
+	// Fallback selects what happens to members without a registered type.
+	Fallback Fallback
+	// KeepRaw retains each member's XML in Member.Raw, so it can be
+	// re-examined with Member.Node.
+	KeepRaw bool
+	// Strict turns the first non-fatal problem into an error instead of a
+	// Warning.
+	Strict bool
+	// MaxBytes limits the size of the message; 0 means no limit.
+	MaxBytes int64
+	// OnWarning, when set, is called for every member that could not be
+	// decoded.  Returning an error aborts parsing.  Parse also records
+	// warnings in Message.Warnings.
+	OnWarning func(Warning) error
+
+	// Converters, when set, lets Parse and Stream accept documents of other
+	// AIXM versions: the document's version is detected and the document
+	// converted to 5.1.1 through the registry (shortest chain), its records
+	// decoded like native members.  Nil: AIXM 5.1.1 only.
+	Converters *convert.Registry
+	// OnConverted, when set, is called once with the conversion report after
+	// a converted document was read completely.  Returning an error fails
+	// the call.  Parse also stores the report in Message.Conversion.
+	OnConverted func(*convert.Report) error
+	// SpoolDir is the directory for the temporary copy of a one-shot reader
+	// that Parse and Stream make before converting it (os.TempDir when
+	// empty).  Native 5.1.1 input is never spooled.
+	SpoolDir string
 }
 
-// ParseFile decodes an AIXMBasicMessage from the file at path.
-func ParseFile(path string) (*parse.Message, error) {
-	f, err := os.Open(path)
+// Warning is a non-fatal problem with one member of a message.
+type Warning struct {
+	// Index is the position of the member in the message.
+	Index int
+	// Kind is the XML local name of the member's feature, if known.
+	Kind string
+	Err  error
+}
+
+func (w Warning) Error() string {
+	return fmt.Sprintf("member %d (%s): %v", w.Index, w.Kind, w.Err)
+}
+
+func (w Warning) Unwrap() error { return w.Err }
+
+// Parse decodes a complete message from r and indexes its features.  With
+// Options.Converters, a document of another AIXM version is first copied to
+// a temporary file (Options.SpoolDir) and converted.
+func Parse(ctx context.Context, r io.Reader, opts Options) (*Message, error) {
+	msg := newMessage()
+	err := readReader(ctx, r, collect(msg, &opts), msg, func(m Member) error {
+		msg.add(m)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	return parse.ParseMessage(f)
+	return msg, nil
 }
 
-// ParseFileWithOptions decodes an AIXMBasicMessage from the file at path using
-// the given options (size limit, strict mode, custom registry).
-func ParseFileWithOptions(ctx context.Context, path string, opts parse.ParseOptions) (*parse.Message, error) {
-	f, err := os.Open(path)
+// ParseFile decodes the message in the file at path.
+func ParseFile(ctx context.Context, path string, opts Options) (*Message, error) {
+	return ParseSource(ctx, convert.FileSource(path), opts)
+}
+
+// ParseSource decodes the message read from src.  Unlike Parse it needs no
+// temporary copy when a converter reads the document more than once.
+func ParseSource(ctx context.Context, src convert.Source, opts Options) (*Message, error) {
+	msg := newMessage()
+	err := readSource(ctx, src, collect(msg, &opts), msg, func(m Member) error {
+		msg.add(m)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	return parse.ParseMessageWithOptions(ctx, f, opts)
+	return msg, nil
 }
 
-// StreamFile streams an AIXMBasicMessage from path, calling handler once for
-// each decoded feature.  Peak memory usage is proportional to the largest
-// single hasMember element rather than the full file size.
-func StreamFile(ctx context.Context, path string, handler parse.StreamHandler) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
+// collect makes opts record warnings and the conversion report in msg.
+func collect(msg *Message, opts *Options) Options {
+	o := *opts
+	userWarn := o.OnWarning
+	o.OnWarning = func(w Warning) error {
+		msg.warnings = append(msg.warnings, w)
+		if userWarn != nil {
+			return userWarn(w)
+		}
+		return nil
 	}
-	defer f.Close()
-	return parse.StreamMessage(ctx, f, handler)
+	userConv := o.OnConverted
+	o.OnConverted = func(r *convert.Report) error {
+		msg.Conversion = r
+		if userConv != nil {
+			return userConv(r)
+		}
+		return nil
+	}
+	return o
 }
 
-// ParseADRMessage decodes a EUROCONTROL ADRMessage from r.
-func ParseADRMessage(r io.Reader) (*parse.ADRMessage, error) {
-	return parse.ParseADRMessage(r)
+// Stream decodes the members of a message from r one at a time and calls fn
+// for each, in document order.  Memory use is proportional to the largest
+// member.  Features are not indexed, so references cannot be resolved; use
+// Parse for that.  Returning an error from fn aborts streaming with that
+// error.  Documents of other AIXM versions are handled as in Parse.
+func Stream(ctx context.Context, r io.Reader, opts Options, fn func(Member) error) error {
+	return readReader(ctx, r, opts, nil, fn)
+}
+
+// StreamFile streams the message in the file at path.
+func StreamFile(ctx context.Context, path string, opts Options, fn func(Member) error) error {
+	return StreamSource(ctx, convert.FileSource(path), opts, fn)
+}
+
+// StreamSource streams the message read from src (see ParseSource).
+func StreamSource(ctx context.Context, src convert.Source, opts Options, fn func(Member) error) error {
+	return readSource(ctx, src, opts, nil, fn)
 }
