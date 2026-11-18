@@ -88,7 +88,7 @@ data, _ := geo.MarshalGeoJSON(fc)
 os.WriteFile("airspace.geojson", data, 0644)
 ```
 
-For airspaces that reference sub-airspace geometry via `xlink:href` (e.g. EDDH-style):
+For airspaces that reference sub-airspace geometry via `xlink:href`, pass the message so the references can be resolved:
 
 ```go
 fc, err := geo.AirspaceToGeoJSONWithRefs(airspace, msg)
