@@ -537,7 +537,8 @@ type SourceDep struct {
 // maxSourceDepDepth bounds the contributor levels SourceDeps follows.
 const maxSourceDepDepth = maxContributorDepth
 
-// SourceDeps lists the dependencies of src in msg (nil msg: none); see
+// SourceDeps lists the dependencies of src in msg (nil msg: every
+// reference unresolved, Slice -1); see
 // SourceResolver.Deps.  For many features of one message use a
 // SourceResolver, which hashes every referenced feature once.
 func (o Options) SourceDeps(src *SourceGeometry, msg *goaixm.Message) ([]SourceDep, error) {
@@ -561,8 +562,8 @@ type resolvedDep struct {
 	err   error
 }
 
-// NewSourceResolver returns a resolver for the features of msg (nil: no
-// dependency resolves), choosing referenced slices by o.At.
+// NewSourceResolver returns a resolver for the features of msg (nil: the
+// references are listed, unresolved), choosing referenced slices by o.At.
 func NewSourceResolver(msg *goaixm.Message, o Options) *SourceResolver {
 	return &SourceResolver{msg: msg, opt: o, cache: map[string]*resolvedDep{}}
 }
@@ -576,7 +577,7 @@ func NewSourceResolver(msg *goaixm.Message, o Options) *SourceResolver {
 // with the resolver's options (Options.At).  The members' element trees
 // are needed for SrcHash (goaixm.Options.KeepRaw, or generic features).
 func (r *SourceResolver) Deps(src *SourceGeometry) ([]SourceDep, error) {
-	if src == nil || r == nil || r.msg == nil {
+	if src == nil || r == nil {
 		return nil, nil
 	}
 	var out []SourceDep
@@ -630,6 +631,9 @@ func (r *SourceResolver) resolve(role, href, key string) *resolvedDep {
 	}
 	rd := &resolvedDep{slice: -1}
 	r.cache[key] = rd
+	if r.msg == nil {
+		return rd
+	}
 	f, ok := r.msg.Resolve(href)
 	if !ok {
 		return rd

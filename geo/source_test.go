@@ -373,6 +373,10 @@ func TestSourceDeps(t *testing.T) {
 	if err != nil || !strings.HasPrefix(string(canon), `[{"href":"urn:uuid:`) {
 		t.Errorf("canonical deps %s %v", canon, err)
 	}
+	// Without the message (a streamed file): listed, unresolved.
+	if deps, err := (geo.Options{}).SourceDeps(a2, nil); err != nil || len(deps) != 2 || deps[0].Slice != -1 || deps[1].Kind != "" {
+		t.Errorf("without message: %+v %v", deps, err)
+	}
 	if c, _ := geo.CanonicalDeps(nil); string(c) != "[]" {
 		t.Errorf("empty deps %s", c)
 	}
